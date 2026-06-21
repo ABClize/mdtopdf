@@ -21,6 +21,8 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
+          - "3.13"
+          - "3.14"
 
     steps:
       - name: Check out repository
@@ -54,6 +56,7 @@ jobs:
         run: mdtopdf doctor --json
 
       - name: Run tests
+        timeout-minutes: 5
         run: python -m pytest tests/ -q
 
   package:
