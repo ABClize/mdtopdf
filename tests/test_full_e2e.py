@@ -5,8 +5,14 @@ import os
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 
-from mdtopdf import markdown_file_to_html, markdown_file_to_pdf, markdown_to_pdf
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
+from mdtopdf import __version__, markdown_file_to_html, markdown_file_to_pdf, markdown_to_pdf
 from mdtopdf.core.pdf import convert_markdown_file
 
 
@@ -64,6 +70,13 @@ def _assert_html(path):
     text = path.read_text(encoding="utf-8")
     assert text.startswith("<!doctype html>")
     assert '<main class="document">' in text
+
+
+def test_package_version_matches_pyproject():
+    pyproject = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    expected = tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+
+    assert __version__ == expected
 
 
 def test_python_api_generates_real_pdf(tmp_path):
@@ -154,6 +167,10 @@ class TestMdtopdfCli:
     def test_help(self):
         result = self._run(["--help"])
         assert "Convert Markdown files to themed PDFs" in result.stdout
+
+    def test_version(self):
+        result = self._run(["--version"])
+        assert __version__ in result.stdout
 
     def test_cli_convert_json(self, tmp_path):
         source = tmp_path / "report.md"
