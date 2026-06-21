@@ -52,6 +52,14 @@ python -m pip install agent-markdown-pdf
 ```
 
 The PyPI distribution is `agent-markdown-pdf`; it installs the `mdtopdf` command.
+Do not use `mdtopdf` as the PyPI package name; the distribution name is
+intentionally different from the command name.
+
+| Use case | Name |
+| --- | --- |
+| Install from PyPI | `agent-markdown-pdf` |
+| Run the CLI | `mdtopdf` |
+| Import in Python | `mdtopdf` |
 
 Check the machine:
 
@@ -79,6 +87,9 @@ The same visual test is also available in Chinese at
 `examples/visual-test-cn.md`.
 
 ## Agent workflow
+
+For new machines or container runners, see the
+[Agent usage guide](https://github.com/ABClize/mdtopdf/blob/main/docs/agent-usage.md).
 
 ```shell
 mdtopdf doctor --json
