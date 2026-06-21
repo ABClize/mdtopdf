@@ -1,119 +1,84 @@
 ---
 name: "mdtopdf"
-description: "Agent-friendly Markdown-to-PDF CLI with HTML preview, JSON diagnostics, Obsidian-compatible Markdown, KaTeX math, Mermaid support, and Python WeasyPrint output."
+description: "Use when an agent needs to install or run mdtopdf: an agent-friendly Markdown-to-PDF CLI with JSON diagnostics, HTML preview, Obsidian-compatible Markdown, local KaTeX math, optional local Mermaid rendering, and WeasyPrint environment checks."
 ---
 
 # mdtopdf
 
-Use `mdtopdf` when an agent needs to turn local Markdown into a PDF without
-Pandoc or a remote renderer. It is designed for agent-written reports,
-Obsidian-style notes, and technical documents that need a real output file plus
-machine-readable command results.
+Use this skill to turn local Markdown into a local PDF with the `mdtopdf` CLI.
+Prefer the CLI over the Python API unless the user explicitly asks for code
+integration.
 
-## Agent Workflow
+## Names
 
-Check the machine first when the environment is new or unknown:
+| Purpose | Name |
+| --- | --- |
+| PyPI distribution | `agent-markdown-pdf` |
+| CLI command | `mdtopdf` |
+| Python import | `mdtopdf` |
+
+Install the package when the command is missing:
+
+```powershell
+python -m pip install agent-markdown-pdf
+```
+
+## Workflow
+
+Check a new or unknown machine first:
 
 ```powershell
 mdtopdf doctor --json
 ```
 
-Use HTML preview when layout matters:
-
-```powershell
-mdtopdf html .\input.md -o .\preview.html --overwrite --json
-```
-
-Generate the final PDF:
+Generate a PDF:
 
 ```powershell
 mdtopdf convert .\input.md -o .\output.pdf --overwrite --json
 ```
 
-For simple reports, skip the preview and call `convert --json` directly after
-`doctor --json`. In JSON mode, failures return structured data that an agent can
-show or act on.
-
-## Requirements
-
-- Python 3.10+
-- The installed PyPI package: `python -m pip install agent-markdown-pdf`
-- The CLI command installed by that package: `mdtopdf`
-- Native WeasyPrint libraries: Pango, GLib, Cairo
-
-The PyPI distribution is `agent-markdown-pdf`. Do not use `mdtopdf` as the PyPI
-package name; the command name and distribution name are intentionally different.
-
-On Windows, native libraries are not installed automatically. Run:
+Use HTML preview only when layout needs debugging:
 
 ```powershell
-mdtopdf doctor --json
+mdtopdf html .\input.md -o .\preview.html --overwrite --json
+mdtopdf convert .\input.md -o .\output.pdf --overwrite --json
 ```
 
-If needed, install MSYS2 Pango and set the DLL directory:
+## Resource Paths
+
+- Use `--base-url PATH_OR_URL` when the Markdown contains relative images or links.
+- Use `--resource-dir PATH` for Obsidian-style image names such as `![[image.png]]`.
+- Use `--css custom.css` when the user provides print CSS.
+- Use `--unsafe-html` only for trusted local Markdown.
+
+## Environment Fixes
+
+`mdtopdf` uses WeasyPrint, so PDF output needs native Pango, GLib, and Cairo
+libraries.
+
+On Windows, run `mdtopdf doctor --json` before guessing. If the JSON output says
+native DLLs are missing, install MSYS2 Pango and set the DLL directory for that
+machine, for example:
 
 ```powershell
 pacman -S mingw-w64-x86_64-pango
 setx WEASYPRINT_DLL_DIRECTORIES "D:\Environment\msys64\mingw64\bin"
 ```
 
-## Useful Options
+The exact MSYS2 path may differ.
 
-- `--theme default`: use the built-in print theme.
-- `--css custom.css`: append custom CSS after the selected theme.
-- `--title TITLE`: set the HTML/PDF document title.
-- `--header TEXT`: set the page header text; by default it uses the input file stem.
-- `--footer TEXT`: set footer text before page numbers.
-- `--no-header`: disable the page header.
-- `--no-footer`: disable the page footer.
-- `--no-page-numbers`: disable page numbers in the footer.
-- `--base-url PATH_OR_URL`: resolve relative images and links from a path or URL.
-- `--resource-dir PATH`: resolve bare image names such as `![[image.png]]` or
-  `![](image.png)` from one explicit local directory.
-- `--overwrite`: replace an existing output file.
-- `--unsafe-html`: allow raw HTML in trusted Markdown input.
-- `--json`: return machine-readable output.
+On Linux containers, install the native WeasyPrint packages before installing
+`agent-markdown-pdf`. If working from this repository, the `Dockerfile` is the
+reference container setup.
 
-## Markdown Support
+## Failure Handling
 
-Markdown supports CommonMark plus tables, task lists, footnotes, fenced code,
-Obsidian-style `==highlight==`, Obsidian-style `[[target|alias]]` wikilinks
-including table-safe `[[target\|alias]]`, Obsidian-style `%%comment%%`
-comments outside code, Obsidian-style `> [!note]` callouts, and a small safe
-HTML subset for document authoring.
-
-Markdown supports `$inline$`, `$$block$$`, and common `amsmath` environments for
-LaTeX formulas. Formulas render offline through bundled KaTeX assets inside the
-Python process with `mini-racer`; users do not need Node.js, remote JavaScript,
-or CDN assets.
-
-Mermaid diagrams are supported with fenced `mermaid` code blocks. The CLI
-renders them to SVG only through local `mmdc` when available. It does not call
-Mermaid.ink or download Mermaid CLI through `npx` during conversion. If `mmdc`
-is missing, Mermaid blocks remain highlighted code.
-
-## Python API
-
-The installed package exposes the same Obsidian-compatible pipeline through a
-public Python API:
-
-```python
-from mdtopdf import markdown_file_to_html, markdown_file_to_pdf, markdown_to_html, markdown_to_pdf
-```
-
-Use `markdown_to_html(markdown_text)` for rendered HTML,
-`markdown_file_to_html(input_path, output_path=..., ...)` for file-based HTML,
-`markdown_to_pdf(markdown_text, output_path, ...)` for Markdown text to PDF, and
-`markdown_file_to_pdf(input_path, output_path=..., ...)` for file-based PDF
-conversion.
-
-## Agent Guidance
-
-- Prefer `--json` for commands an agent runs.
-- Use `doctor --json` before conversion on a new machine or when native library
-  state is unknown.
-- Use `html` for quick layout checks and `convert` for the final PDF.
-- If conversion fails with a WeasyPrint or DLL error, run `doctor --json` and
-  use the recommendations field for the next system-level fix.
-- Do not look for Pandoc; this CLI uses `markdown-it-py` plus WeasyPrint.
-- Version `0.1.0` ships the built-in theme `default`.
+- Prefer `--json` so failures are structured.
+- If conversion fails with a WeasyPrint, Pango, GLib, Cairo, or DLL error, run
+  `mdtopdf doctor --json` and follow its recommendations.
+- If Mermaid diagrams do not render, check whether local `mmdc` is installed.
+  Mermaid is optional; `mdtopdf` does not call Mermaid.ink or download Mermaid
+  CLI during conversion.
+- Do not look for Pandoc; this CLI uses `markdown-it-py` and WeasyPrint.
+- Report the exact command, JSON error, and output path when handing results
+  back to the user.
