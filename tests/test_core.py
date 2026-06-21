@@ -1181,6 +1181,11 @@ def test_doctor_font_groups_match_default_theme_font_fallbacks(monkeypatch):
         "available_font_names",
         lambda: {"Microsoft YaHei", "Consolas", "Cambria Math", "Segoe UI Emoji"},
     )
+    monkeypatch.setattr(
+        fonts_core,
+        "_fontconfig_emoji_match",
+        lambda: {"ok": False, "families": [], "file": None, "error": "not found"},
+    )
 
     result = doctor._inspect_fonts()
 
