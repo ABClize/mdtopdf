@@ -51,6 +51,13 @@ python -m pip install agent-markdown-pdf
 ```
 
 PyPI 发行包叫 `agent-markdown-pdf`，安装后提供的命令仍然是 `mdtopdf`。
+不要把 `mdtopdf` 当作 PyPI 包名；发布包名和命令名是故意分开的。
+
+| 用途 | 名称 |
+| --- | --- |
+| 从 PyPI 安装 | `agent-markdown-pdf` |
+| 执行 CLI | `mdtopdf` |
+| Python import | `mdtopdf` |
 
 检查本机环境：
 
@@ -78,6 +85,7 @@ mdtopdf convert examples/visual-test-cn.md -o visual-test-cn.pdf --overwrite --j
 
 ## Agent 调用方式
 
+新机器或容器环境可以先看 [Agent 使用说明](docs/agent-usage.md)。
 
 ```powershell
 mdtopdf doctor --json

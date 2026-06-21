@@ -37,8 +37,12 @@ show or act on.
 ## Requirements
 
 - Python 3.10+
-- The installed `mdtopdf` Python package
+- The installed PyPI package: `python -m pip install agent-markdown-pdf`
+- The CLI command installed by that package: `mdtopdf`
 - Native WeasyPrint libraries: Pango, GLib, Cairo
+
+The PyPI distribution is `agent-markdown-pdf`. Do not use `mdtopdf` as the PyPI
+package name; the command name and distribution name are intentionally different.
 
 On Windows, native libraries are not installed automatically. Run:
 
