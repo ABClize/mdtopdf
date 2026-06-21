@@ -21,6 +21,7 @@ jobs:
           - "3.10"
           - "3.11"
           - "3.12"
+          - "3.13"
 
     steps:
       - name: Check out repository
@@ -54,7 +55,7 @@ jobs:
         run: mdtopdf doctor --json
 
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: timeout 300s python -m pytest tests/ -vv -s -o faulthandler_timeout=120
 
   package:
     name: Package check
