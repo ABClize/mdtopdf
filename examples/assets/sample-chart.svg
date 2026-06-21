@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="360" viewBox="0 0 920 360" role="img" aria-label="Sample report chart">
+  <rect width="920" height="360" rx="18" fill="#f6f9fc"/>
+  <rect x="48" y="42" width="824" height="252" rx="12" fill="#ffffff" stroke="#d7e2ee" stroke-width="2"/>
+  <text x="70" y="84" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700" fill="#173b5c">Sample Figure: Markdown to PDF Visual Check</text>
+  <text x="70" y="118" font-family="Segoe UI, Arial, sans-serif" font-size="16" fill="#516173">Local SVG image referenced from Markdown.</text>
+  <line x1="96" y1="252" x2="806" y2="252" stroke="#b7c6d8" stroke-width="2"/>
+  <line x1="96" y1="154" x2="96" y2="252" stroke="#b7c6d8" stroke-width="2"/>
+  <rect x="142" y="200" width="86" height="52" rx="6" fill="#256f8a"/>
+  <rect x="274" y="176" width="86" height="76" rx="6" fill="#9a3f65"/>
+  <rect x="406" y="162" width="86" height="90" rx="6" fill="#24765a"/>
+  <rect x="538" y="138" width="86" height="114" rx="6" fill="#a15c18"/>
+  <rect x="670" y="188" width="86" height="64" rx="6" fill="#5f55a4"/>
+  <text x="151" y="282" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#516173">Text</text>
+  <text x="277" y="282" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#516173">Table</text>
+  <text x="407" y="282" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#516173">Math</text>
+  <text x="532" y="282" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#516173">Callout</text>
+  <text x="668" y="282" font-family="Segoe UI, Arial, sans-serif" font-size="14" fill="#516173">Mermaid</text>
+</svg>

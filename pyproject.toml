@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mdtopdf"
+version = "1.0.0"
+description = "Convert Markdown to themed PDF using markdown-it-py and Python WeasyPrint"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = ["markdown", "pdf", "weasyprint", "obsidian", "cli"]
+authors = [
+  { name = "rainp" }
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Documentation",
+  "Topic :: Printing",
+  "Topic :: Text Processing :: Markup :: Markdown",
+]
+dependencies = [
+  "click>=8.0.0",
+  "markdown-it-py>=3.0.0",
+  "mdit-py-plugins>=0.4.0",
+  "pygments>=2.0.0",
+  "latex2mathml>=3.81.0",
+  "matplotlib>=3.10.0",
+  "mini-racer>=0.14.1",
+  "weasyprint>=69.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "build>=1.2.0",
+  "twine>=5.0.0",
+]
+
+[project.scripts]
+mdtopdf = "mdtopdf.mdtopdf_cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ABClize/mdtopdf"
+Repository = "https://github.com/ABClize/mdtopdf"
+Issues = "https://github.com/ABClize/mdtopdf/issues"
+
+[tool.setuptools.packages.find]
+include = ["mdtopdf", "mdtopdf.*"]
+
+[tool.setuptools.package-data]
+mdtopdf = [
+  "themes/*.css",
+  "skills/*.md",
+  "vendor/katex/LICENSE",
+  "vendor/katex/dist/*.css",
+  "vendor/katex/dist/*.js",
+  "vendor/katex/dist/contrib/*.js",
+  "vendor/katex/dist/fonts/*",
+]
