@@ -188,6 +188,7 @@ def render_markdown_to_html(
     body = _replace_task_checkboxes(body)
     if obsidian_embed_resolver is not None:
         body = _resolve_image_sources(body, obsidian_embed_resolver)
+    body = _wrap_emoji_text(body)
     css = compose_css(
         load_theme_css(theme),
         custom_css,
@@ -195,7 +196,7 @@ def render_markdown_to_html(
         page_footer=resolved_footer if include_page_footer else None,
         page_numbers=page_numbers if include_page_footer else False,
     )
-    html = _build_document(resolved_title, body, css)
+    html = _build_document(resolved_title, body, css, lang=infer_document_lang(markdown_text))
     return RenderedHTML(title=resolved_title, body=body, css=css, html=html)
 
 
@@ -218,6 +219,22 @@ def infer_title(markdown_text: str) -> str | None:
         if match:
             return re.sub(r"\s+#*$", "", match.group(1)).strip() or None
     return None
+
+
+def infer_document_lang(markdown_text: str) -> str:
+    cjk_count = sum(1 for char in markdown_text if _is_cjk_char(char))
+    latin_count = sum(1 for char in markdown_text if ("A" <= char <= "Z") or ("a" <= char <= "z"))
+    if cjk_count and cjk_count >= max(4, latin_count // 4):
+        return "zh-Hans"
+    return "en"
+
+
+def _is_cjk_char(char: str) -> bool:
+    return (
+        "\u3400" <= char <= "\u4dbf"
+        or "\u4e00" <= char <= "\u9fff"
+        or "\uf900" <= char <= "\ufaff"
+    )
 
 
 def _build_markdown_renderer(*, unsafe_html: bool = False) -> MarkdownIt:
@@ -912,6 +929,51 @@ def _replace_task_checkboxes(html: str) -> str:
     )
 
 
+def _wrap_emoji_text(html: str) -> str:
+    parts: list[str] = []
+    skip_stack: list[str] = []
+
+    for part in _HTML_TAG_TOKEN_RE.split(html):
+        if not part:
+            continue
+        if part.startswith("<") and part.endswith(">"):
+            _update_emoji_skip_stack(part, skip_stack)
+            parts.append(part)
+            continue
+        if skip_stack:
+            parts.append(part)
+            continue
+        parts.append(_EMOJI_TEXT_RE.sub(_emoji_span, part))
+
+    return "".join(parts)
+
+
+def _update_emoji_skip_stack(tag_html: str, skip_stack: list[str]) -> None:
+    match = _HTML_TAG_NAME_RE.match(tag_html)
+    if not match:
+        return
+
+    tag = match.group("tag").lower()
+    if tag not in _EMOJI_SKIP_TAGS:
+        return
+
+    is_closing = tag_html.startswith("</")
+    if is_closing:
+        for index in range(len(skip_stack) - 1, -1, -1):
+            if skip_stack[index] == tag:
+                del skip_stack[index]
+                break
+        return
+
+    if tag_html.rstrip().endswith("/>") or tag in _VOID_HTML_TAGS:
+        return
+    skip_stack.append(tag)
+
+
+def _emoji_span(match: re.Match[str]) -> str:
+    return f'<span class="mdtopdf-emoji">{match.group(0)}</span>'
+
+
 def _pygments_css() -> str:
     formatter = HtmlFormatter()
     return formatter.get_style_defs(".highlight")
@@ -972,11 +1034,12 @@ def _css_string(value: str) -> str:
     return f'"{escaped}"'
 
 
-def _build_document(title: str, body: str, css: str) -> str:
+def _build_document(title: str, body: str, css: str, *, lang: str = "en") -> str:
     safe_title = escape(title)
+    safe_lang = escape(lang, quote=True)
     return (
         "<!doctype html>\n"
-        '<html lang="en">\n'
+        f'<html lang="{safe_lang}">\n'
         "<head>\n"
         '  <meta charset="utf-8">\n'
         f"  <title>{safe_title}</title>\n"
@@ -999,6 +1062,21 @@ def merge_css_files(paths: Iterable[str]) -> str:
 
 _CALLOUT_BLOCKQUOTE_RE = re.compile(r"<blockquote>\n(?P<inner>.*?)</blockquote>", re.DOTALL)
 _IMG_SRC_RE = re.compile(r'(<img\b(?=[^>]*\bsrc=")[^>]*?\bsrc=")([^"]*)(")', re.IGNORECASE)
+_HTML_TAG_TOKEN_RE = re.compile(r"(<[^>]+>)")
+_HTML_TAG_NAME_RE = re.compile(r"</?\s*(?P<tag>[A-Za-z][A-Za-z0-9:-]*)")
+_EMOJI_BASE_PATTERN = (
+    "["
+    "\U0001F1E6-\U0001F1FF"
+    "\U0001F300-\U0001FAFF"
+    "\u2600-\u27BF"
+    "]"
+)
+_EMOJI_TEXT_RE = re.compile(
+    rf"{_EMOJI_BASE_PATTERN}[\ufe0e\ufe0f]?(?:[\U0001F3FB-\U0001F3FF])?"
+    rf"(?:\u200d{_EMOJI_BASE_PATTERN}[\ufe0e\ufe0f]?(?:[\U0001F3FB-\U0001F3FF])?)*"
+)
+_EMOJI_SKIP_TAGS = {"code", "kbd", "pre", "script", "style", "textarea"}
+_VOID_HTML_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 _CALLOUT_MARKER_RE = re.compile(
     r"^\[!(?P<type>[A-Za-z][A-Za-z0-9_-]*)(?P<fold>[+-])?\](?P<after>.*)$",
     re.DOTALL,

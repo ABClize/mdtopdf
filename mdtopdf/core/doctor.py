@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from mdtopdf.core.fonts import inspect_recommended_font_groups
 from mdtopdf.core.mermaid import inspect_mermaid_backend
 
 
@@ -21,8 +22,6 @@ COMMON_WINDOWS_DLL_DIRS = (
     r"C:\msys64\mingw64\bin",
     r"D:\Environment\msys64\mingw64\bin",
 )
-
-
 def add_weasyprint_dll_directories() -> list[str]:
     """Register Windows DLL search directories from ``WEASYPRINT_DLL_DIRECTORIES``."""
 
@@ -68,6 +67,7 @@ def run_doctor() -> dict[str, Any]:
         "packages": {},
         "tools": {},
         "native_libraries": _inspect_native_libraries(),
+        "fonts": _inspect_fonts(),
         "recommendations": [],
     }
 
@@ -113,6 +113,19 @@ def format_doctor_text(result: dict[str, Any]) -> str:
                 f"{'OK' if probe['all_found'] else 'MISSING'} "
                 f"found={', '.join(probe['found']) or '(none)'} "
                 f"missing={', '.join(probe['missing']) or '(none)'}"
+            )
+
+    if result.get("fonts"):
+        lines.extend(["", "Fonts:"])
+        font_error = result["fonts"].get("error")
+        if font_error:
+            lines.append(f"  - font inspection: FAIL - {font_error}")
+        for name, info in result["fonts"].get("groups", {}).items():
+            found = ", ".join(info.get("found", [])) or "(none)"
+            recommended = ", ".join(info.get("recommended", []))
+            lines.append(
+                f"  - {name}: {'OK' if info.get('ok') else 'MISSING'} "
+                f"found={found} recommended={recommended}"
             )
 
     if result.get("recommendations"):
@@ -194,6 +207,10 @@ def _env_dll_directories() -> list[str]:
     return [part.strip() for part in raw.split(os.pathsep) if part.strip()]
 
 
+def _inspect_fonts() -> dict[str, Any]:
+    return inspect_recommended_font_groups()
+
+
 def _recommendations(result: dict[str, Any]) -> list[str]:
     recommendations: list[str] = []
     package_info = result.get("packages", {}).get("weasyprint", {})
@@ -214,6 +231,34 @@ def _recommendations(result: dict[str, Any]) -> list[str]:
         recommendations.append(
             "Optional: install Mermaid rendering support with Node.js plus: "
             "npm install -g @mermaid-js/mermaid-cli"
+        )
+
+    font_info = result.get("fonts", {})
+    font_groups = font_info.get("groups", {})
+    if font_info.get("error"):
+        recommendations.append("Font inspection failed; run conversion once and verify CJK text visually.")
+    if font_groups.get("cjk_sans") and not font_groups["cjk_sans"].get("ok"):
+        recommendations.append(
+            "Install Microsoft YaHei when you want the default theme to match its first-choice CJK font. "
+            "On Debian or Ubuntu, Noto CJK is a practical fallback: sudo apt-get install fonts-noto-cjk"
+        )
+    if font_groups.get("monospace") and not font_groups["monospace"].get("ok"):
+        recommendations.append(
+            "Optional: install a monospace font such as Cascadia Code or Liberation Mono for stable code blocks."
+        )
+    if font_groups.get("math") and not font_groups["math"].get("ok"):
+        recommendations.append(
+            "Optional: install STIX fonts for math fallback, for example: sudo apt-get install fonts-stix"
+        )
+    if font_groups.get("emoji") and not font_groups["emoji"].get("ok"):
+        recommendations.append(
+            "Provide Segoe UI Emoji in the runtime if you want the default theme's first-choice "
+            "emoji glyphs. If that is not available, install another emoji font and run fc-cache -f."
+        )
+    elif font_groups.get("emoji") and "Segoe UI Emoji" in font_groups["emoji"].get("missing", []):
+        recommendations.append(
+            "Optional: provide Segoe UI Emoji if you want the default theme's preferred emoji glyphs. "
+            "Existing emoji fallback fonts will still be used."
         )
 
     if os.name == "nt":

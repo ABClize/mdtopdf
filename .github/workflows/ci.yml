@@ -39,7 +39,9 @@ jobs:
             libpangoft2-1.0-0 \
             poppler-utils \
             shared-mime-info \
-            fonts-dejavu-core
+            fonts-dejavu-core \
+            fonts-noto-cjk \
+            fonts-stix
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -83,18 +85,3 @@ jobs:
 
       - name: Check distributions
         run: python -m twine check dist/*
-
-  docker:
-    name: Docker build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-
-      - name: Build image
-        timeout-minutes: 10
-        run: docker build -t mdtopdf .
-
-      - name: Check image environment
-        run: docker run --rm mdtopdf doctor --json

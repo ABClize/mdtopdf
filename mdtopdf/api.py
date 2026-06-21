@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from mdtopdf.core.doctor import add_weasyprint_dll_directories
+from mdtopdf.core.fonts import inspect_css_font_usage, summarize_font_usage
 from mdtopdf.core.html import convert_markdown_file_to_html
 from mdtopdf.core.markdown import DEFAULT_THEME, RenderedHTML, render_markdown_to_html
 from mdtopdf.core.obsidian import build_resource_resolver, resolve_resource_dir
@@ -143,6 +144,7 @@ def markdown_to_pdf(
         include_page_footer=include_page_footer,
         page_numbers=page_numbers,
     )
+    font_usage = inspect_css_font_usage(rendered.css, document_text=markdown_text)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -174,6 +176,8 @@ def markdown_to_pdf(
         "page_header": effective_header,
         "page_footer": effective_footer,
         "page_numbers": bool(include_page_footer and page_numbers),
+        "font_check": summarize_font_usage(font_usage),
+        "warnings": font_usage.get("warnings", []),
         "method": "markdown-it-py+weasyprint",
     }
 

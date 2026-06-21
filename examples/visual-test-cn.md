@@ -33,6 +33,8 @@ tags:
 
 也检查安全 HTML 嵌套：**<kbd>Enter</kbd>**、*<kbd>Esc</kbd>*、<ruby>汉<rt>han</rt></ruby>字、<abbr title="Portable Document Format">PDF</abbr>。
 
+Emoji 走系统 emoji 字体：🤖 Agent、📊 图表、✅ 完成、⚠️ 警告、🚀 发布、📦 包、💡 想法和 🔗 链接。
+
 ## 3. 链接、脚注与 Obsidian 双链
 
 这是一个普通链接：[Python 官网](https://www.python.org/)。这是一个带别名的 Obsidian 双链：[[#4. 列表|跳到列表章节]]。这是一个普通 wiki 链接：[[未创建的页面]]。
@@ -48,6 +50,8 @@ tags:
 - 一级无序列表
   - 二级无序列表，包含 **粗体** 与 `代码`
     - 三级无序列表，观察缩进和 marker
+- ✅ 带 emoji marker 的列表项
+- ⚠️ 带警告 emoji 的列表项，包含 `代码`
 - 另一个一级无序列表
 
 1. 一级有序列表

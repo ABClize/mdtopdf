@@ -5,7 +5,7 @@
 
 :root {
   color: #172033;
-  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Segoe UI", Arial, sans-serif;
+  font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "Segoe UI", "Segoe UI Emoji", Arial, "Apple Color Emoji", "Noto Emoji", "Noto Color Emoji", sans-serif;
   font-size: 11.5pt;
   line-height: 1.55;
 }
@@ -95,12 +95,36 @@ h6 {
 }
 
 p {
+  hyphens: auto;
   margin: 0 0 0.5em;
+  overflow-wrap: break-word;
+  text-align: justify;
+  text-align-last: start;
+  text-justify: inter-word;
 }
 
 a {
   color: #0f6ea7;
   text-decoration: none;
+}
+
+.mdtopdf-emoji {
+  font-family:
+    "Segoe UI Emoji",
+    "Apple Color Emoji",
+    "Noto Emoji",
+    "Noto Color Emoji",
+    "Twemoji Mozilla",
+    "EmojiOne Color",
+    "Microsoft YaHei",
+    "Noto Sans SC",
+    "Noto Sans CJK SC",
+    sans-serif;
+  font-style: normal;
+  font-variant-emoji: emoji;
+  font-weight: 400;
+  line-height: 1;
+  vertical-align: -0.08em;
 }
 
 mark {
@@ -120,7 +144,7 @@ code {
   border-radius: 3px;
   box-shadow: inset 0 -1px 0 #d7e1ea;
   color: #173b5c;
-  font-family: "Cascadia Mono", "Consolas", "Liberation Mono", monospace;
+  font-family: "Cascadia Mono", "Cascadia Code", "Consolas", "Noto Sans Mono CJK SC", "Liberation Mono", "DejaVu Sans Mono", monospace;
   font-size: 0.86em;
   font-weight: 500;
   padding: 0.08em 0.32em;
@@ -286,7 +310,7 @@ pre {
   border-radius: 8px;
   box-shadow: 0 7px 18px rgba(15, 42, 67, 0.08);
   color: #172033;
-  font-family: "Cascadia Mono", "Consolas", "Liberation Mono", monospace;
+  font-family: "Cascadia Mono", "Cascadia Code", "Consolas", "Noto Sans Mono CJK SC", "Liberation Mono", "DejaVu Sans Mono", monospace;
   font-size: 9.2pt;
   line-height: 1.48;
   margin: 1em 0 1.1em;
@@ -398,7 +422,7 @@ rp {
 
 .math {
   color: #15191f;
-  font-family: "Cambria Math", "Latin Modern Math", "STIX Two Math", "Times New Roman", serif;
+  font-family: "Cambria Math", "STIX Two Math", "STIXGeneral", "Latin Modern Math", "Times New Roman", serif;
 }
 
 .math-svg {
@@ -473,7 +497,7 @@ table.math-array .math-inline {
 .mathlabel {
   color: #1474b4;
   float: right;
-  font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+  font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "Segoe UI", Arial, sans-serif;
   font-size: 0.85em;
 }
 
@@ -487,7 +511,7 @@ table.math-array .math-inline {
 
 .chemistry {
   color: #15191f;
-  font-family: "Cambria Math", "Latin Modern Math", "STIX Two Math", "Times New Roman", "Microsoft YaHei", serif;
+  font-family: "Cambria Math", "STIX Two Math", "STIXGeneral", "Latin Modern Math", "Times New Roman", "Microsoft YaHei", "Noto Sans SC", "Noto Sans CJK SC", serif;
 }
 
 .chemistry-inline {
@@ -562,7 +586,7 @@ blockquote.callout .callout-title::before {
   color: #ffffff;
   content: "i";
   display: inline-block;
-  font-family: "Segoe UI", Arial, sans-serif;
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Noto Sans CJK SC", "Segoe UI", Arial, sans-serif;
   font-size: 0.78em;
   font-weight: 800;
   height: 1.34em;

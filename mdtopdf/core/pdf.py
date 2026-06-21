@@ -5,6 +5,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from mdtopdf.core.doctor import add_weasyprint_dll_directories
+from mdtopdf.core.fonts import inspect_css_font_usage, summarize_font_usage
 from mdtopdf.core.markdown import (
     DEFAULT_THEME,
     load_custom_css,
@@ -100,6 +101,7 @@ def convert_markdown_file(
         page_numbers=page_numbers,
         obsidian_embed_resolver=build_resource_resolver(pdf_base_url, source, resolved_resource_dir),
     )
+    font_usage = inspect_css_font_usage(rendered.css, document_text=markdown_text)
 
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -130,6 +132,8 @@ def convert_markdown_file(
         "page_header": effective_header,
         "page_footer": effective_footer,
         "page_numbers": bool(include_page_footer and page_numbers),
+        "font_check": summarize_font_usage(font_usage),
+        "warnings": font_usage.get("warnings", []),
         "method": "markdown-it-py+weasyprint",
     }
 

@@ -9,6 +9,7 @@ import pytest
 
 from mdtopdf import markdown_to_html
 from mdtopdf.core import doctor
+from mdtopdf.core import fonts as fonts_core
 from mdtopdf.core import katex as katex_core
 from mdtopdf.core import markdown as markdown_core
 from mdtopdf.core import mermaid as mermaid_core
@@ -67,6 +68,23 @@ def test_markdown_rendering_features():
     assert 'class="language-python"' in rendered.body
     assert "katex-display" in rendered.body
     assert "katex-html" in rendered.body
+
+
+def test_emoji_text_uses_system_font_span_but_code_stays_literal():
+    rendered = render_markdown_to_html(
+        "# Emoji\n\n"
+        "Agent \U0001f916 and warning \u26a0\ufe0f\n\n"
+        "`code \U0001f916`\n\n"
+        "```text\n"
+        "fence \U0001f916\n"
+        "```\n"
+    )
+
+    assert 'Agent <span class="mdtopdf-emoji">\U0001f916</span>' in rendered.body
+    assert '<span class="mdtopdf-emoji">\u26a0\ufe0f</span>' in rendered.body
+    assert "<code>code \U0001f916</code>" in rendered.body
+    pre_block = rendered.body.split('<pre class="highlight">', 1)[1].split("</pre>", 1)[0]
+    assert "mdtopdf-emoji" not in pre_block
 
 
 def test_softbreaks_render_as_hardbreaks_in_paragraphs_and_lists():
@@ -699,6 +717,14 @@ def test_utf8_bom_does_not_break_first_heading():
     assert "\ufeff" not in rendered.body
 
 
+def test_document_language_is_inferred_for_html_output():
+    english = render_markdown_to_html("# Report\n\nThis is an English paragraph.\n")
+    chinese = render_markdown_to_html("# 中文报告\n\n这是一段中文正文，用于检查语言标记。\n")
+
+    assert '<html lang="en">' in english.html
+    assert '<html lang="zh-Hans">' in chinese.html
+
+
 def test_public_html_api_is_obsidian_compatible_by_default():
     rendered = markdown_to_html(
         "---\n"
@@ -754,6 +780,17 @@ def test_theme_loading():
 
     assert "@page" in css
     assert "A4" in css
+    assert '"Microsoft YaHei", "PingFang SC", "Hiragino Sans GB"' in css
+    assert ".mdtopdf-emoji {" in css
+    emoji_block = css.rsplit(".mdtopdf-emoji {", 1)[1].split("}", 1)[0]
+    assert emoji_block.index('"Segoe UI Emoji"') < emoji_block.index('"Noto Color Emoji"')
+    assert "font-variant-emoji: emoji;" in emoji_block
+    assert '"Twemoji Mozilla",' in css
+    assert '"Cascadia Mono", "Cascadia Code", "Consolas"' in css
+    assert '"Cambria Math", "STIX Two Math", "STIXGeneral"' in css
+    assert "hyphens: auto;" in css
+    assert "text-align: justify;" in css
+    assert "text-align-last: start;" in css
     assert "kbd,\ncode {" in css
     assert "linear-gradient(180deg" in mark_block
     assert "border-radius: 3px;" in mark_block
@@ -976,6 +1013,80 @@ def test_custom_css_is_appended_after_theme_and_pygments():
     assert merged.index(".highlight") < merged.index(custom_css)
 
 
+def test_css_font_usage_accepts_font_face_and_warns_missing(monkeypatch):
+    monkeypatch.setattr(
+        fonts_core,
+        "available_font_names",
+        lambda: {"Noto Sans SC", "Liberation Mono", "STIXGeneral"},
+    )
+
+    result = fonts_core.inspect_css_font_usage(
+        '@font-face { font-family: "Report Sans"; src: url("report.woff2"); }\n'
+        ':root { font-family: "Report Sans", "Noto Sans SC", sans-serif; }\n'
+        'h2 { font-family: "Missing Display"; }\n'
+    )
+
+    assert result["ok"] is False
+    assert result["font_faces"] == ["report sans"]
+    assert result["stacks"][0]["resolved"][0]["source"] == "font-face"
+    assert result["warnings"][0]["type"] == "missing_font_stack"
+    assert result["warnings"][0]["families"] == ["Missing Display"]
+
+
+def test_css_font_usage_warns_when_cjk_text_has_no_cjk_font(monkeypatch):
+    monkeypatch.setattr(fonts_core, "available_font_names", lambda: {"Arial"})
+
+    result = fonts_core.inspect_css_font_usage(
+        ':root { font-family: Arial, sans-serif; }\n',
+        document_text="中文报告",
+    )
+
+    assert result["ok"] is False
+    assert result["warnings"][0]["type"] == "missing_cjk_font"
+
+
+def test_css_font_usage_accepts_system_cjk_font_for_cjk_text(monkeypatch):
+    monkeypatch.setattr(fonts_core, "available_font_names", lambda: {"Microsoft YaHei", "Arial"})
+
+    result = fonts_core.inspect_css_font_usage(
+        ':root { font-family: "Microsoft YaHei", Arial, sans-serif; }\n',
+        document_text="中文报告",
+    )
+
+    assert result["ok"] is True
+    assert result["warnings"] == []
+
+
+def test_css_font_usage_warns_when_emoji_text_has_no_emoji_font(monkeypatch):
+    monkeypatch.setattr(fonts_core, "available_font_names", lambda: {"Arial"})
+    monkeypatch.setattr(
+        fonts_core,
+        "_fontconfig_emoji_match",
+        lambda: {"ok": False, "families": [], "file": None, "error": "not found"},
+    )
+
+    result = fonts_core.inspect_css_font_usage(
+        ':root { font-family: Arial, sans-serif; }\n',
+        document_text="Agent report \U0001f916",
+    )
+
+    assert result["ok"] is False
+    assert result["warnings"][0]["type"] == "missing_emoji_font"
+    assert result["warnings"][0]["recommended"][0] == "Segoe UI Emoji"
+
+
+def test_css_font_usage_accepts_system_emoji_font(monkeypatch):
+    monkeypatch.setattr(fonts_core, "available_font_names", lambda: {"Segoe UI Emoji", "Arial"})
+
+    result = fonts_core.inspect_css_font_usage(
+        ':root { font-family: Arial, "Segoe UI Emoji", sans-serif; }\n',
+        document_text="Agent report \U0001f916",
+    )
+
+    assert result["ok"] is True
+    assert result["warnings"] == []
+
+
 def test_derive_output_path():
     assert derive_output_path("notes/report.md").as_posix().endswith("notes/report.pdf")
 
@@ -1004,6 +1115,29 @@ def test_file_html_export_includes_base_href_and_requires_overwrite(tmp_path):
 
     overwrite = convert_markdown_file_to_html(source, output_path=output, overwrite=True)
     assert overwrite["file_size"] == output.stat().st_size
+
+
+def test_file_html_export_reports_missing_custom_css_fonts(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        fonts_core,
+        "available_font_names",
+        lambda: {"Noto Sans SC", "Liberation Mono", "STIXGeneral"},
+    )
+
+    source = tmp_path / "notes.md"
+    output = tmp_path / "preview.html"
+    css = tmp_path / "print.css"
+    source.write_text("# Preview\n\nBody\n", encoding="utf-8")
+    css.write_text('h1 { font-family: "Missing Display Font"; }\n', encoding="utf-8")
+
+    result = convert_markdown_file_to_html(source, output_path=output, custom_css_path=css)
+
+    assert result["ok"] is True
+    assert result["font_check"]["ok"] is False
+    assert result["font_check"]["checked_stacks"] >= 1
+    assert result["warnings"][0]["type"] == "missing_font_stack"
+    assert result["warnings"][0]["families"] == ["Missing Display Font"]
+    assert output.exists()
 
 
 def test_existing_output_requires_overwrite(tmp_path):
@@ -1036,7 +1170,30 @@ def test_doctor_json_shape():
     assert "matplotlib" in result["packages"]
     assert "tools" in result
     assert "mermaid" in result["tools"]
+    assert "fonts" in result
+    assert "cjk_sans" in result["fonts"]["groups"]
     assert "recommendations" in result
+
+
+def test_doctor_font_groups_match_default_theme_font_fallbacks(monkeypatch):
+    monkeypatch.setattr(
+        fonts_core,
+        "available_font_names",
+        lambda: {"Microsoft YaHei", "Consolas", "Cambria Math", "Segoe UI Emoji"},
+    )
+    monkeypatch.setattr(
+        fonts_core,
+        "_fontconfig_emoji_match",
+        lambda: {"ok": False, "families": [], "file": None, "error": "not found"},
+    )
+
+    result = doctor._inspect_fonts()
+
+    assert result["ok"] is True
+    assert result["groups"]["cjk_sans"]["found"] == ["Microsoft YaHei"]
+    assert result["groups"]["monospace"]["found"] == ["Consolas"]
+    assert result["groups"]["math"]["found"] == ["Cambria Math"]
+    assert result["groups"]["emoji"]["found"] == ["Segoe UI Emoji"]
 
 
 def test_doctor_reports_missing_mini_racer(monkeypatch):

@@ -120,7 +120,7 @@ def _replace_foreign_object_labels(svg: str) -> str:
         return (
             f'{match.group(1)}<text x="{width / 2:.3f}" y="{height / 2:.3f}" '
             'text-anchor="middle" dominant-baseline="central" '
-            'font-family="trebuchet ms, verdana, arial, sans-serif" '
+            'font-family="Microsoft YaHei, PingFang SC, Hiragino Sans GB, Noto Sans SC, Noto Sans CJK SC, Arial, sans-serif" '
             'font-size="16" fill="#333">'
             f"{escape(text)}"
             "</text></g>"

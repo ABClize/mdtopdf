@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from mdtopdf.core.fonts import inspect_css_font_usage, summarize_font_usage
 from mdtopdf.core.markdown import (
     DEFAULT_THEME,
     load_custom_css,
@@ -101,6 +102,7 @@ def convert_markdown_file_to_html(
         page_numbers=page_numbers,
         obsidian_embed_resolver=build_resource_resolver(html_base_url, source, resolved_resource_dir),
     )
+    font_usage = inspect_css_font_usage(rendered.css, document_text=markdown_text)
 
     html = _inject_base_href(rendered.html, _base_href(html_base_url))
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -122,6 +124,8 @@ def convert_markdown_file_to_html(
         "page_header": effective_header,
         "page_footer": effective_footer,
         "page_numbers": bool(include_page_footer and page_numbers),
+        "font_check": summarize_font_usage(font_usage),
+        "warnings": font_usage.get("warnings", []),
         "method": "markdown-it-py+html",
     }
 

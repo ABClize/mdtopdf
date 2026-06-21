@@ -23,6 +23,14 @@ def _json_enabled(ctx: click.Context, local_json: bool = False) -> bool:
     return bool(obj.get("json") or local_json)
 
 
+def _emit_warnings(data: dict[str, Any]) -> None:
+    for warning in data.get("warnings", []):
+        message = warning.get("message", "Warning")
+        detail = warning.get("declaration") or ", ".join(warning.get("families", []))
+        suffix = f" ({detail})" if detail else ""
+        click.secho(f"Warning: {message}{suffix}", fg="yellow", err=True)
+
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(version=__version__, prog_name="mdtopdf")
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
@@ -102,6 +110,7 @@ def convert(
         _emit_json(result)
     else:
         click.echo(f"Converted PDF: {result['output']} ({result['file_size']} bytes)")
+        _emit_warnings(result)
 
 
 @cli.command("html")
@@ -172,6 +181,7 @@ def html(
         _emit_json(result)
     else:
         click.echo(f"Converted HTML: {result['output']} ({result['file_size']} bytes)")
+        _emit_warnings(result)
 
 
 @cli.command()
