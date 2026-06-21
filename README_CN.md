@@ -95,7 +95,7 @@ mdtopdf html report.md -o report.html --overwrite --json
 mdtopdf convert report.md -o report.pdf --overwrite --json
 ```
 
-`convert --json` 会返回输入路径、输出路径、文件大小、主题和渲染方式。转换失败时，
+`convert --json` 会返回输入路径、输出路径、文件大小、主题、字体检查摘要、warning 和渲染方式。转换失败时，
 JSON 里会有结构化错误，Agent 可以直接把命令、原因和下一步修复建议交代清楚。
 
 ## 输出效果
@@ -125,7 +125,7 @@ Mermaid 是可选扩展。本地有 `mmdc` 时，Mermaid 代码块会渲染成 S
 | 功能 | 说明 |
 | --- | --- |
 | JSON 输出 | `convert`、`html`、`doctor`、`themes list` 都支持 `--json`。 |
-| 环境检查 | `doctor --json` 会检查 Python 包、WeasyPrint 原生库、Windows DLL 路径和 Mermaid 可用性。 |
+| 环境检查 | `doctor --json` 会检查 Python 包、WeasyPrint 原生库、Windows DLL 路径、Mermaid 可用性和推荐字体。 |
 | 本地渲染 | Markdown、CSS、数学公式、Mermaid SVG 生成和 PDF 导出都在本机完成。 |
 | HTML 预览 | 生成 standalone HTML，用来快速检查最终 PDF 之前的排版。 |
 | Obsidian 兼容 | 支持 wikilink、别名、frontmatter 隐藏、评论、高亮和 typed callout。 |
@@ -164,6 +164,32 @@ mdtopdf convert report.md -o report.pdf --css print.css
 mdtopdf convert report.md -o report.pdf --base-url assets
 mdtopdf convert report.md -o report.pdf --resource-dir attachments
 ```
+
+自定义样式统一写在 CSS 里，不需要单独的字体参数。版心、字号、颜色、间距、字体都可以放进同一个 `print.css`。系统已安装的字体可以直接写 `font-family`；如果要随项目带本地字体文件，可以在 CSS 里写 `@font-face`。CSS 里的相对路径会按 Markdown 的 `--base-url` 解析，需要时显式传 `--base-url`。
+
+```css
+@font-face {
+  font-family: "Report Sans";
+  src: url("fonts/NotoSansSC-Regular.otf");
+}
+
+:root {
+  font-family: "Report Sans", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+}
+
+code,
+pre {
+  font-family: "Cascadia Code", "Liberation Mono", monospace;
+}
+```
+
+然后把 CSS 传给转换命令：
+
+```powershell
+mdtopdf convert report.md -o report.pdf --css print.css --base-url .
+```
+
+导出时，`mdtopdf` 会检查最终 CSS 里的字体栈。字体缺失不会阻断 PDF 生成，但会在命令行 warning 和 JSON 的 `warnings` 字段里提示。
 
 输出 JSON：
 
@@ -244,6 +270,26 @@ mdtopdf doctor --json
 WeasyPrint 还需要 Pango、GLib、Cairo 等原生库。Linux 和 macOS 通常可以通过
 系统包管理器安装。Windows 需要额外处理一次。
 
+默认主题的 CSS 在所有平台都会把 `Microsoft YaHei` 放在第一位，Linux
+也一样。如果 Linux 环境里装了微软雅黑，WeasyPrint 会优先使用它；如果没装，
+才会继续回退到 `PingFang SC`、`Noto Sans SC`、`Noto Sans CJK SC`、
+`Source Han Sans SC` 等字体。
+
+如果在 Linux 容器或 Agent 沙箱里没有安装微软雅黑，就安装你想使用的中文字体。
+Debian 或 Ubuntu 上，Noto CJK 是一个实用兜底选择：
+
+```shell
+sudo apt-get install -y fonts-noto-cjk fonts-noto-color-emoji fonts-stix fonts-dejavu-core
+fc-cache -f
+```
+
+Emoji 走系统 emoji 字体。默认主题会让 emoji span 在所有平台都优先使用
+`Segoe UI Emoji`，Linux 也一样。Windows 通常自带这个字体；Linux 容器只有在
+运行环境提供它时，才会得到同样的字形效果。如果没有 `Segoe UI Emoji`，主题会
+继续回退到 `Apple Color Emoji`、`Noto Emoji`、`Noto Color Emoji` 等已安装的
+emoji 字体。最终 PDF 是否保留彩色 emoji，还会受 WeasyPrint、Pango/Cairo 和
+PDF 查看器影响。
+
 Windows 上常见的 MSYS2 安装方式：
 
 ```powershell
@@ -262,7 +308,7 @@ pacman -S mingw-w64-x86_64-pango
 setx WEASYPRINT_DLL_DIRECTORIES "C:\msys64\mingw64\bin"
 ```
 
-完成后运行：
+完成后运行。JSON 结果里也会显示推荐的 CJK、emoji、等宽代码和数学 fallback 字体是否存在：
 
 ```powershell
 mdtopdf doctor --json
@@ -288,3 +334,6 @@ python -m twine check dist/*
 
 MIT。内置 KaTeX 资源同样使用 MIT license，见
 `mdtopdf/vendor/katex/LICENSE`。
+
+`mdtopdf` 不内置中文正文字体，也不分发 emoji 字体、微软雅黑、苹方、Segoe UI、
+Segoe UI Emoji、Consolas 这类系统字体。默认主题会引用这些字体名，但字体文件来自用户自己的操作系统或运行环境。

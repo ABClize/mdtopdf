@@ -23,8 +23,25 @@ GLib, and Cairo. Those native libraries are not bundled by this package and are
 not installed automatically on Windows.
 
 The CLI provides `doctor --json` so callers can detect whether Python
-dependencies, native libraries, and the optional Mermaid renderer are available
-before attempting a conversion.
+dependencies, native libraries, recommended fallback fonts, and the optional
+Mermaid renderer are available before attempting a conversion.
+Conversion also checks the final CSS font stacks after theme and custom CSS are
+combined. Missing fonts are surfaced as warnings in text output and as
+structured `warnings` entries in JSON results; they do not stop PDF generation.
+
+The default theme names Microsoft YaHei first on every platform, including
+Linux. When that font is installed in the runtime, WeasyPrint uses it; otherwise
+the CSS stack falls back to PingFang SC, Noto Sans SC / Noto Sans CJK SC /
+Source Han Sans SC, and other available CJK fonts. Emoji are rendered through
+the system emoji font. The default theme gives emoji spans first priority to
+Segoe UI Emoji on every platform, including Linux. Linux containers only get
+that same glyph set when the runtime provides the font; otherwise the stack
+falls back to Apple Color Emoji, Noto Emoji, Noto Color Emoji, and other
+installed emoji fonts. Color rendering in PDFs depends on the WeasyPrint/Pango/Cairo
+stack and the PDF viewer. Code blocks prefer Cascadia or Consolas before other monospace
+fallbacks, and math prefers Cambria Math before STIX-family fallbacks. These
+body and emoji fonts are not bundled in the Python wheel; Linux containers
+should provide the preferred fonts themselves or install usable fallbacks.
 
 ## Markdown Support
 
@@ -63,7 +80,8 @@ as active HTML. Trusted local Markdown can opt into raw HTML with
 
 - `mdtopdf doctor --json`
   - Checks Python imports, WeasyPrint native libraries, optional Mermaid
-    support, and returns recommendations for the caller.
+    support, recommended fallback fonts, and returns recommendations for the
+    caller.
 - `mdtopdf html INPUT.md -o OUTPUT.html [--json] [--unsafe-html]`
   - Uses the same Markdown, Obsidian compatibility, math, Mermaid, theme, and
     custom CSS pipeline as PDF conversion.

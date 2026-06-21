@@ -99,10 +99,10 @@ mdtopdf html report.md -o report.html --overwrite --json
 mdtopdf convert report.md -o report.pdf --overwrite --json
 ```
 
-`convert --json` returns the input path, output path, file size, theme, and
-render method. If conversion fails in JSON mode, the error is structured enough
-for an agent to show the command, explain the likely cause, and retry after a
-fix.
+`convert --json` returns the input path, output path, file size, theme, font
+check summary, warnings, and render method. If conversion fails in JSON mode,
+the error is structured enough for an agent to show the command, explain the
+likely cause, and retry after a fix.
 
 ## Visual output
 
@@ -134,7 +134,7 @@ remain visible as highlighted code.
 | Feature | Notes |
 | --- | --- |
 | JSON output | `--json` is available for conversion, HTML preview, doctor, and theme listing. |
-| Environment checks | `doctor --json` checks Python imports, native WeasyPrint libraries, Windows DLL paths, and Mermaid availability. |
+| Environment checks | `doctor --json` checks Python imports, native WeasyPrint libraries, Windows DLL paths, Mermaid availability, and recommended fonts. |
 | Local rendering | Markdown, CSS, math, Mermaid SVG generation, and PDF export stay on the machine. |
 | HTML preview | Generate standalone HTML before PDF export for fast visual inspection. |
 | Obsidian compatibility | Wikilinks, aliases, frontmatter hiding, comments, highlights, and typed callouts. |
@@ -173,6 +173,38 @@ mdtopdf convert report.md -o report.pdf --css print.css
 mdtopdf convert report.md -o report.pdf --base-url assets
 mdtopdf convert report.md -o report.pdf --resource-dir attachments
 ```
+
+Custom CSS is the style extension point. Put document-specific rules in a CSS
+file; fonts, spacing, colors, page rules, and code block styling all live there.
+Use a system-installed font directly, or define `@font-face` for a local font
+file. Relative URLs in CSS are resolved from the Markdown file's base URL, so
+use `--base-url` when those assets live next to your document:
+
+```css
+@font-face {
+  font-family: "Report Sans";
+  src: url("fonts/NotoSansSC-Regular.otf");
+}
+
+:root {
+  font-family: "Report Sans", "Noto Sans SC", "Source Han Sans SC", sans-serif;
+}
+
+code,
+pre {
+  font-family: "Cascadia Code", "Liberation Mono", monospace;
+}
+```
+
+Then pass the CSS file:
+
+```shell
+mdtopdf convert report.md -o report.pdf --css print.css --base-url .
+```
+
+During export, `mdtopdf` checks the final CSS font stacks. Missing fonts do not
+stop PDF generation, but they are reported in CLI warnings and in the JSON
+`warnings` field.
 
 Return JSON:
 
@@ -250,6 +282,31 @@ rendering is available.
 WeasyPrint also needs native libraries such as Pango, GLib, and Cairo. Linux
 and macOS package managers usually provide them through system packages.
 
+The default theme names `Microsoft YaHei` first in its CSS on every platform,
+including Linux. If that font is installed in the environment, WeasyPrint will
+use it. If it is missing, the theme falls back to `PingFang SC`,
+`Noto Sans SC`, `Noto Sans CJK SC`, `Source Han Sans SC`, and other available
+CJK fonts.
+
+For stable CJK output in Linux containers or agent sandboxes where Microsoft
+YaHei is not installed, install the CJK font you want to use. Noto CJK is a
+practical fallback on Debian or Ubuntu:
+
+Emoji are rendered through the system emoji font. The default theme prefers
+`Segoe UI Emoji` for emoji spans on every platform, including Linux. Windows
+usually provides it; Linux containers only get the same glyphs if the runtime
+provides that font. If Segoe UI Emoji is not available, the theme falls back to
+`Apple Color Emoji`, `Noto Emoji`, `Noto Color Emoji`, and other installed emoji
+fonts. Whether the final PDF keeps color emoji still depends on WeasyPrint,
+Pango/Cairo, and the PDF viewer.
+
+On Debian or Ubuntu, this is a practical open-font fallback baseline:
+
+```shell
+sudo apt-get install -y fonts-noto-cjk fonts-noto-color-emoji fonts-stix fonts-dejavu-core
+fc-cache -f
+```
+
 On Windows, install the native libraries separately. A common MSYS2 setup is:
 
 ```powershell
@@ -269,7 +326,8 @@ if MSYS2 is installed somewhere else:
 setx WEASYPRINT_DLL_DIRECTORIES "C:\msys64\mingw64\bin"
 ```
 
-Run this after installation:
+Run this after installation. The JSON output also reports whether recommended
+CJK, emoji, monospace, and math fallback fonts are present:
 
 ```shell
 mdtopdf doctor --json
@@ -295,3 +353,8 @@ python -m twine check dist/*
 
 MIT. Bundled KaTeX assets are also distributed under the MIT license; see
 `mdtopdf/vendor/katex/LICENSE`.
+
+`mdtopdf` does not bundle CJK body fonts, emoji fonts, or proprietary system
+fonts. The default theme references local system fonts such as Microsoft YaHei,
+PingFang SC, Segoe UI, Segoe UI Emoji, Noto Emoji, Noto Color Emoji, and Consolas, but
+those font files come from the user's operating system or runtime environment.
