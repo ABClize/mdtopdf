@@ -13,12 +13,12 @@
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-2_min-blue?style=for-the-badge" alt="Quick Start"></a>
   <a href="#agent-workflow"><img src="https://img.shields.io/badge/Agent_Friendly-JSON_Output-green?style=for-the-badge" alt="Agent Friendly"></a>
   <a href="#visual-output"><img src="https://img.shields.io/badge/PDF_Pages-Rendered-purple?style=for-the-badge" alt="Rendered PDF pages"></a>
-  <a href="https://pypi.org/project/mdtopdf/"><img src="https://img.shields.io/pypi/v/mdtopdf.svg?style=for-the-badge" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/agent-markdown-pdf/"><img src="https://img.shields.io/pypi/v/agent-markdown-pdf.svg?style=for-the-badge" alt="PyPI version"></a>
   <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-yellow?style=for-the-badge" alt="License"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/pypi/pyversions/mdtopdf.svg" alt="Python versions">
+  <img src="https://img.shields.io/pypi/pyversions/agent-markdown-pdf.svg" alt="Python versions">
   <img src="https://img.shields.io/badge/output-JSON_%2B_Human-blueviolet" alt="JSON and human output">
   <img src="https://img.shields.io/badge/backend-WeasyPrint-2f855a" alt="WeasyPrint backend">
   <img src="https://img.shields.io/badge/status-alpha-f59e0b" alt="Alpha status">
@@ -48,8 +48,10 @@ command-line interface where the style can be defined up front.
 Install from PyPI:
 
 ```shell
-python -m pip install mdtopdf
+python -m pip install agent-markdown-pdf
 ```
+
+The PyPI distribution is `agent-markdown-pdf`; it installs the `mdtopdf` command.
 
 Check the machine:
 

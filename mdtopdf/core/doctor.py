@@ -198,7 +198,7 @@ def _recommendations(result: dict[str, Any]) -> list[str]:
     recommendations: list[str] = []
     package_info = result.get("packages", {}).get("weasyprint", {})
     if not package_info.get("ok"):
-        recommendations.append("Install Python dependencies with: python -m pip install mdtopdf")
+        recommendations.append("Install Python dependencies with: python -m pip install agent-markdown-pdf")
     mini_racer_info = result.get("packages", {}).get("mini-racer", {})
     if not mini_racer_info.get("ok"):
         recommendations.append("Install KaTeX rendering support with: python -m pip install mini-racer")

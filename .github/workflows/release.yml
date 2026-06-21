@@ -106,7 +106,7 @@ jobs:
       - build
     environment:
       name: pypi
-      url: https://pypi.org/p/mdtopdf
+      url: https://pypi.org/p/agent-markdown-pdf
     permissions:
       id-token: write
 
