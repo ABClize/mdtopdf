@@ -213,7 +213,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 - `$inline$`、`$$block$$` 和常见 `amsmath` 环境
 - 本地 `mmdc` 可用时渲染 Mermaid 图
 
-默认不会放行任意原始 HTML。可信本地 Markdown 可以使用 `--unsafe-html`。
+默认情况下，`mdtopdf` 不会直接渲染任意原始 HTML；如果 Markdown 来源可信，可以显式加上 `--unsafe-html`。
 
 ## Mermaid 可选依赖
 
