@@ -27,7 +27,7 @@
 **One command** gives agents a controlled Markdown-to-PDF path.
 
 <p align="center">
-  <img src="assets/readme/cover.png" alt="mdtopdf cover" width="900">
+  <img src="https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/cover.png" alt="mdtopdf cover" width="900">
 </p>
 
 ---
@@ -104,11 +104,11 @@ pagination.
 
 | Page 1 | Page 2 |
 | --- | --- |
-| <img src="assets/readme/pdf-page-en-1.png" alt="PDF page 1" width="420"> | <img src="assets/readme/pdf-page-en-2.png" alt="PDF page 2" width="420"> |
+| <img src="https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/pdf-page-en-1.png" alt="PDF page 1" width="420"> | <img src="https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/pdf-page-en-2.png" alt="PDF page 2" width="420"> |
 | Page 3 | Page 4 |
-| <img src="assets/readme/pdf-page-en-3.png" alt="PDF page 3" width="420"> | <img src="assets/readme/pdf-page-en-4.png" alt="PDF page 4" width="420"> |
+| <img src="https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/pdf-page-en-3.png" alt="PDF page 3" width="420"> | <img src="https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/pdf-page-en-4.png" alt="PDF page 4" width="420"> |
 | Page 5 | Page 6 |
-| <img src="assets/readme/pdf-page-en-5.png" alt="PDF page 5" width="420"> | <img src="assets/readme/pdf-page-en-6.png" alt="PDF page 6" width="420"> |
+| <img src="https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/pdf-page-en-5.png" alt="PDF page 5" width="420"> | <img src="https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/pdf-page-en-6.png" alt="PDF page 6" width="420"> |
 
 ## How it works
 
