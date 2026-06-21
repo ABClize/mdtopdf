@@ -85,7 +85,8 @@ mdtopdf convert examples/visual-test-cn.md -o visual-test-cn.pdf --overwrite --j
 
 ## Agent 调用方式
 
-新机器或容器环境可以先看 [Agent 使用说明](docs/agent-usage.md)。
+内置 Agent skill 放在 `mdtopdf/skills/SKILL.md`，源码和 PyPI 包里都会带上。
+其他 Agent 如果需要一份紧凑的调用说明，直接看这个文件就够了。
 
 ```powershell
 mdtopdf doctor --json

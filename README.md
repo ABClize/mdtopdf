@@ -88,8 +88,9 @@ The same visual test is also available in Chinese at
 
 ## Agent workflow
 
-For new machines or container runners, see the
-[Agent usage guide](https://github.com/ABClize/mdtopdf/blob/main/docs/agent-usage.md).
+The bundled agent skill lives at
+[`mdtopdf/skills/SKILL.md`](https://github.com/ABClize/mdtopdf/blob/main/mdtopdf/skills/SKILL.md).
+Use that file when another agent needs a compact runtime guide for `mdtopdf`.
 
 ```shell
 mdtopdf doctor --json
