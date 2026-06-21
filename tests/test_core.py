@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import importlib
+import sys
+import types
 from urllib.parse import quote
 
 import pytest
 
 from mdtopdf import markdown_to_html
 from mdtopdf.core import doctor
+from mdtopdf.core import katex as katex_core
 from mdtopdf.core import markdown as markdown_core
 from mdtopdf.core import mermaid as mermaid_core
 from mdtopdf.core.html import convert_markdown_file_to_html, derive_html_output_path
@@ -297,6 +300,37 @@ def test_katex_css_rewrites_font_urls_to_package_files():
     assert "@font-face" in css
     assert "file:///" in css
     assert "url(fonts/" not in css
+
+
+def test_katex_context_can_be_closed(monkeypatch):
+    katex_core.close_katex_context()
+
+    class FakeMiniRacer:
+        def __init__(self):
+            self.closed = 0
+
+        def eval(self, source: str) -> None:
+            assert isinstance(source, str)
+
+        def call(self, name: str, latex: str, options: dict[str, object]) -> str:
+            assert name == "katex.renderToString"
+            assert latex == "x"
+            assert options["output"] == "html"
+            return "<span>x</span>"
+
+        def close(self) -> None:
+            self.closed += 1
+
+    fake = FakeMiniRacer()
+    monkeypatch.setitem(sys.modules, "py_mini_racer", types.SimpleNamespace(MiniRacer=lambda: fake))
+    monkeypatch.setattr(katex_core, "_resource_text", lambda relative_path: "")
+
+    assert katex_core.render_katex_to_html("x") == "<span>x</span>"
+
+    katex_core.close_katex_context()
+    katex_core.close_katex_context()
+
+    assert fake.closed == 1
 
 
 def test_latex_to_html_math_falls_back_to_svg_when_katex_fails(monkeypatch):

@@ -55,7 +55,8 @@ jobs:
         run: mdtopdf doctor --json
 
       - name: Run tests
-        run: timeout 300s python -m pytest tests/ -vv -s -o faulthandler_timeout=120
+        timeout-minutes: 5
+        run: python -m pytest tests/ -q
 
   package:
     name: Package check
