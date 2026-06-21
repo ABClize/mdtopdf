@@ -12,7 +12,7 @@
 <p align="center">
   <a href="#快速上手"><img src="https://img.shields.io/badge/快速上手-2_分钟-blue?style=for-the-badge" alt="快速上手"></a>
   <a href="#agent-调用方式"><img src="https://img.shields.io/badge/Agent_friendly-JSON_输出-green?style=for-the-badge" alt="Agent friendly"></a>
-  <a href="#输出效果"><img src="https://img.shields.io/badge/预览-HTML_%2B_PDF-purple?style=for-the-badge" alt="HTML 和 PDF 预览"></a>
+  <a href="#输出效果"><img src="https://img.shields.io/badge/PDF_页面-渲染效果-purple?style=for-the-badge" alt="PDF 页面渲染效果"></a>
   <a href="https://pypi.org/project/mdtopdf/"><img src="https://img.shields.io/pypi/v/mdtopdf.svg?style=for-the-badge" alt="PyPI version"></a>
   <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-yellow?style=for-the-badge" alt="License"></a>
 </p>
@@ -94,16 +94,16 @@ JSON 里会有结构化错误，Agent 可以直接把命令、原因和下一步
 
 ## 输出效果
 
-HTML 预览和 PDF 导出走同一套 Markdown pipiline。HTML 适合快速看字体、间距和图片；
-PDF 是最终分页效果。
+下面 6 张图来自 `examples/visual-test-cn.md`，能看到标题、Callout、表格、代码、
+公式、图片、Mermaid 和分页的实际效果。
 
-<p align="center">
-  <img src="assets/readme/workflow.png" alt="mdtopdf workflow" width="900">
-</p>
-
-| HTML 预览 | PDF 输出 |
+| 第 1 页 | 第 2 页 |
 | --- | --- |
-| ![HTML preview](assets/readme/html-preview.png) | ![PDF output](assets/readme/pdf-output.png) |
+| <img src="assets/readme/pdf-page-cn-1.png" alt="PDF 第 1 页" width="420"> | <img src="assets/readme/pdf-page-cn-2.png" alt="PDF 第 2 页" width="420"> |
+| 第 3 页 | 第 4 页 |
+| <img src="assets/readme/pdf-page-cn-3.png" alt="PDF 第 3 页" width="420"> | <img src="assets/readme/pdf-page-cn-4.png" alt="PDF 第 4 页" width="420"> |
+| 第 5 页 | 第 6 页 |
+| <img src="assets/readme/pdf-page-cn-5.png" alt="PDF 第 5 页" width="420"> | <img src="assets/readme/pdf-page-cn-6.png" alt="PDF 第 6 页" width="420"> |
 
 ## 工作方式
 

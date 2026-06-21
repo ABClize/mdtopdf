@@ -12,7 +12,7 @@
 <p align="center">
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-2_min-blue?style=for-the-badge" alt="Quick Start"></a>
   <a href="#agent-workflow"><img src="https://img.shields.io/badge/Agent_Friendly-JSON_Output-green?style=for-the-badge" alt="Agent Friendly"></a>
-  <a href="#visual-output"><img src="https://img.shields.io/badge/Preview-HTML_%2B_PDF-purple?style=for-the-badge" alt="HTML and PDF preview"></a>
+  <a href="#visual-output"><img src="https://img.shields.io/badge/PDF_Pages-Rendered-purple?style=for-the-badge" alt="Rendered PDF pages"></a>
   <a href="https://pypi.org/project/mdtopdf/"><img src="https://img.shields.io/pypi/v/mdtopdf.svg?style=for-the-badge" alt="PyPI version"></a>
   <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-yellow?style=for-the-badge" alt="License"></a>
 </p>
@@ -97,16 +97,18 @@ fix.
 
 ## Visual output
 
-HTML preview and PDF export use the same Markdown pipeline. HTML is useful for
-quick checks of typography, spacing, and images; PDF is the final page layout.
+The gallery below is rendered from the final PDF produced by
+`examples/visual-test-en.md`. It shows the actual pages an agent can hand back
+to a user: headings, callouts, tables, code, math, images, Mermaid, and
+pagination.
 
-<p align="center">
-  <img src="assets/readme/workflow.png" alt="mdtopdf workflow" width="900">
-</p>
-
-| HTML preview | PDF output |
+| Page 1 | Page 2 |
 | --- | --- |
-| ![HTML preview](assets/readme/html-preview.png) | ![PDF output](assets/readme/pdf-output.png) |
+| <img src="assets/readme/pdf-page-en-1.png" alt="PDF page 1" width="420"> | <img src="assets/readme/pdf-page-en-2.png" alt="PDF page 2" width="420"> |
+| Page 3 | Page 4 |
+| <img src="assets/readme/pdf-page-en-3.png" alt="PDF page 3" width="420"> | <img src="assets/readme/pdf-page-en-4.png" alt="PDF page 4" width="420"> |
+| Page 5 | Page 6 |
+| <img src="assets/readme/pdf-page-en-5.png" alt="PDF page 5" width="420"> | <img src="assets/readme/pdf-page-en-6.png" alt="PDF page 6" width="420"> |
 
 ## How it works
 
