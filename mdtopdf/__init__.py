@@ -18,7 +18,7 @@ from mdtopdf.core.html import convert_markdown_file_to_html, derive_html_output_
 from mdtopdf.core.markdown import RenderedHTML, available_themes
 from mdtopdf.core.pdf import convert_markdown_file, derive_output_path
 
-__version__ = "1.0.0"
+__version__ = "0.1.0"
 
 __all__ = [
     "RenderedHTML",

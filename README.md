@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/mdtopdf.svg)](https://pypi.org/project/mdtopdf/)
 [![Python versions](https://img.shields.io/pypi/pyversions/mdtopdf.svg)](https://pypi.org/project/mdtopdf/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/ABClize/mdtopdf/blob/main/LICENSE)
-[![Status](https://img.shields.io/badge/status-beta-2563eb.svg)](https://github.com/ABClize/mdtopdf)
+[![Status](https://img.shields.io/badge/status-alpha-f59e0b.svg)](https://github.com/ABClize/mdtopdf)
 
 Convert Markdown to polished PDFs with a clean Python CLI.
 
