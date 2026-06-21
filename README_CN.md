@@ -14,7 +14,7 @@
   <a href="#agent-调用方式"><img src="https://img.shields.io/badge/Agent_friendly-JSON_输出-green?style=for-the-badge" alt="Agent friendly"></a>
   <a href="#输出效果"><img src="https://img.shields.io/badge/PDF_页面-渲染效果-purple?style=for-the-badge" alt="PDF 页面渲染效果"></a>
   <a href="https://pypi.org/project/agent-markdown-pdf/"><img src="https://img.shields.io/pypi/v/agent-markdown-pdf.svg?style=for-the-badge" alt="PyPI version"></a>
-  <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-yellow?style=for-the-badge" alt="License"></a>
+  <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
 </p>
 
 <p align="center">
@@ -291,5 +291,5 @@ python -m twine check dist/*
 
 ## 许可证
 
-Apache-2.0。内置 KaTeX 资源使用 MIT license，见
+MIT。内置 KaTeX 资源同样使用 MIT license，见
 `mdtopdf/vendor/katex/LICENSE`。
