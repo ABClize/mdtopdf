@@ -12,7 +12,7 @@ Convert Markdown to polished PDFs with a clean Python CLI.
 for local documents, Obsidian-style notes, technical reports, and automation
 workflows that need predictable command-line output.
 
-![mdtopdf cover](https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/cover.png)
+![mdtopdf cover](assets/readme/cover.png)
 
 ```shell
 python -m pip install mdtopdf
@@ -68,11 +68,11 @@ mdtopdf html examples/visual-test.md -o visual-test.html --overwrite
 `mdtopdf` uses the same Markdown rendering pipeline for both HTML preview and
 PDF export, so you can tune styles quickly before producing the final document.
 
-![mdtopdf workflow](https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/workflow.png)
+![mdtopdf workflow](assets/readme/workflow.png)
 
 | HTML preview | PDF output |
 | --- | --- |
-| ![HTML preview](https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/html-preview.png) | ![PDF output](https://raw.githubusercontent.com/ABClize/mdtopdf/main/assets/readme/pdf-output.png) |
+| ![HTML preview](assets/readme/html-preview.png) | ![PDF output](assets/readme/pdf-output.png) |
 
 ## Features
 
