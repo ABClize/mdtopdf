@@ -2,9 +2,12 @@
 
 ## Purpose
 
-`mdtopdf` is a one-shot Markdown to PDF converter for agent and script
-workflows. Version 1 intentionally avoids project files, sessions, REPL mode,
-undo/redo, and preview state. The conversion pipeline is fixed:
+`mdtopdf` is an agent-friendly, one-shot Markdown-to-PDF converter for scripts
+and local report workflows. Conversion stays local, and the CLI exposes the
+parts agents usually need: environment checks through `doctor --json`, optional
+HTML previews, PDF export, and JSON results. The 0.x series intentionally avoids
+project files, sessions, REPL mode, undo/redo, and preview state. The conversion
+pipeline is fixed:
 
 ```text
 Markdown -> markdown-it-py HTML -> default/custom CSS -> WeasyPrint PDF
@@ -14,13 +17,14 @@ Pandoc is not used or required.
 
 ## Backend
 
-The rendering backend is the Python `weasyprint` package. WeasyPrint itself still
-depends on native libraries for text layout and drawing, including Pango, GLib,
-and Cairo. Those native libraries are not bundled by this package and are not
-installed automatically on Windows.
+The rendering backend is the Python `weasyprint` package. WeasyPrint itself
+still depends on native libraries for text layout and drawing, including Pango,
+GLib, and Cairo. Those native libraries are not bundled by this package and are
+not installed automatically on Windows.
 
-The CLI provides `doctor` so agents can detect whether Python dependencies and
-native libraries are available before attempting a conversion.
+The CLI provides `doctor --json` so callers can detect whether Python
+dependencies, native libraries, and the optional Mermaid renderer are available
+before attempting a conversion.
 
 ## Markdown Support
 
@@ -46,8 +50,7 @@ The parser is `markdown-it-py` with selected plugins:
 - LaTeX math formulas via `mdit-py-plugins` dollar math and amsmath plugins,
   rendered offline to static KaTeX HTML with the Python `mini-racer` package.
   The package vendors KaTeX JavaScript, CSS, and fonts, so users do not need
-  Node.js, remote JavaScript, or CDN assets for math rendering. SVG, MathML,
-  chemistry HTML, and array-table rendering remain fallbacks for unsupported TeX.
+  Node.js, remote JavaScript, or CDN assets for math rendering.
 - Mermaid fenced code blocks rendered to SVG only through local Mermaid CLI
   (`mmdc`); when `mmdc` is missing, Mermaid blocks remain highlighted code
 
@@ -58,9 +61,17 @@ as active HTML. Trusted local Markdown can opt into raw HTML with
 
 ## Command Surface
 
-- `mdtopdf convert INPUT.md -o OUTPUT.pdf [--unsafe-html]`
-  - Adds a page header and footer by default. The header uses the input file stem,
-    and the footer shows page numbers.
+- `mdtopdf doctor --json`
+  - Checks Python imports, WeasyPrint native libraries, optional Mermaid
+    support, and returns recommendations for the caller.
+- `mdtopdf html INPUT.md -o OUTPUT.html [--json] [--unsafe-html]`
+  - Uses the same Markdown, Obsidian compatibility, math, Mermaid, theme, and
+    custom CSS pipeline as PDF conversion.
+  - Writes standalone HTML for fast browser style preview before final PDF
+    verification.
+- `mdtopdf convert INPUT.md -o OUTPUT.pdf [--json] [--unsafe-html]`
+  - Adds a page header and footer by default. The header uses the input file
+    stem, and the footer shows page numbers.
   - Use `--theme default` for the built-in theme.
   - Use `--header TEXT`, `--footer TEXT`, `--no-header`, `--no-footer`, and
     `--no-page-numbers` to control page furniture.
@@ -68,13 +79,7 @@ as active HTML. Trusted local Markdown can opt into raw HTML with
     resources already present in the generated HTML.
   - Use `--resource-dir PATH` to resolve bare image names such as
     `![[image.png]]` or `![](image.png)` from one explicit local directory.
-- `mdtopdf html INPUT.md -o OUTPUT.html [--unsafe-html]`
-  - Uses the same Markdown, Obsidian compatibility, math, Mermaid, theme, and
-    custom CSS pipeline as PDF conversion.
-  - Writes standalone HTML for fast browser style preview before final PDF
-    verification.
-- `mdtopdf doctor`
-- `mdtopdf themes list`
+- `mdtopdf themes list --json`
 
 Every command supports JSON output through either the top-level `--json` flag or
 the command-local `--json` flag.
@@ -86,8 +91,8 @@ directory.
 
 ## Python API Surface
 
-The public Python API is exposed from `mdtopdf` and is
-Obsidian-compatible by default:
+The public Python API is exposed from `mdtopdf` and is Obsidian-compatible by
+default:
 
 - `markdown_to_html(markdown_text, ...)`
 - `markdown_file_to_html(input_path, output_path=..., ...)`
@@ -109,5 +114,5 @@ pacman -S mingw-w64-x86_64-pango
 setx WEASYPRINT_DLL_DIRECTORIES "D:\Environment\msys64\mingw64\bin"
 ```
 
-The CLI does not run these commands automatically. `doctor` reports the current
-environment and suggests fixes when native libraries are missing.
+The CLI does not run these commands automatically. `doctor --json` reports the
+current environment and suggests fixes when native libraries are missing.

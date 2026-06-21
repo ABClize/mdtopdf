@@ -1,94 +1,138 @@
-# mdtopdf
+<h1 align="center">mdtopdf: Agent-friendly Markdown-to-PDF CLI</h1>
 
-[![PyPI version](https://img.shields.io/pypi/v/mdtopdf.svg)](https://pypi.org/project/mdtopdf/)
-[![Python versions](https://img.shields.io/pypi/pyversions/mdtopdf.svg)](https://pypi.org/project/mdtopdf/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/ABClize/mdtopdf/blob/main/LICENSE)
-[![Status](https://img.shields.io/badge/status-alpha-f59e0b.svg)](https://github.com/ABClize/mdtopdf)
+<p align="center">
+  <strong>Agents write Markdown. People need PDFs. mdtopdf handles the step in between.</strong><br>
+  Local rendering, HTML preview, and JSON diagnostics give agents and scripts a stable document output path.
+</p>
 
-Convert Markdown to polished PDFs with a clean Python CLI.
+<p align="center">
+  <a href="https://github.com/ABClize/mdtopdf/blob/main/README_CN.md">中文文档</a>
+</p>
 
-`mdtopdf` is a cross-platform Markdown to PDF tool built around
-`markdown-it-py`, standalone HTML preview, and Python WeasyPrint. It is designed
-for local documents, Obsidian-style notes, technical reports, and automation
-workflows that need predictable command-line output.
+<p align="center">
+  <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-2_min-blue?style=for-the-badge" alt="Quick Start"></a>
+  <a href="#agent-workflow"><img src="https://img.shields.io/badge/Agent_Friendly-JSON_Output-green?style=for-the-badge" alt="Agent Friendly"></a>
+  <a href="#visual-output"><img src="https://img.shields.io/badge/Preview-HTML_%2B_PDF-purple?style=for-the-badge" alt="HTML and PDF preview"></a>
+  <a href="https://pypi.org/project/mdtopdf/"><img src="https://img.shields.io/pypi/v/mdtopdf.svg?style=for-the-badge" alt="PyPI version"></a>
+  <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-yellow?style=for-the-badge" alt="License"></a>
+</p>
 
-![mdtopdf cover](assets/readme/cover.png)
+<p align="center">
+  <img src="https://img.shields.io/pypi/pyversions/mdtopdf.svg" alt="Python versions">
+  <img src="https://img.shields.io/badge/output-JSON_%2B_Human-blueviolet" alt="JSON and human output">
+  <img src="https://img.shields.io/badge/backend-WeasyPrint-2f855a" alt="WeasyPrint backend">
+  <img src="https://img.shields.io/badge/status-alpha-f59e0b" alt="Alpha status">
+</p>
+
+**One command** gives agents a controlled Markdown-to-PDF path.
+
+<p align="center">
+  <img src="assets/readme/cover.png" alt="mdtopdf cover" width="900">
+</p>
+
+---
+
+## Why it works for agents
+
+Agents are good at writing Markdown. The problem is the handoff: PDFs exported
+through ad hoc paths rarely share the same style. `mdtopdf` gives the user a
+command-line interface where the style can be defined up front.
+
+- **Agent-friendly** - `mdtopdf --help` is an interface description an agent can read.
+- **JSON when it matters** - conversion, HTML preview, environment checks, and theme listing can return machine-readable output.
+- **Local files in, local files out** - no browser dependency, no upload step, no remote rendering service.
+- **More than plain Markdown** - Obsidian links, highlights, frontmatter, comments, and callouts are rendered.
+
+## Quick start
+
+Install from PyPI:
 
 ```shell
 python -m pip install mdtopdf
-mdtopdf convert report.md -o report.pdf
 ```
 
-`mdtopdf` does not use Pandoc. Version 1 is stateless and does not provide REPL,
-project files, undo, or redo.
-
-## Start Here
-
-| You want to... | Go to |
-| --- | --- |
-| Install and convert a file | [Quick Start](#quick-start) |
-| See the rendered output | [Visual Output](#visual-output) |
-| Preview styles before PDF export | [HTML Preview](#html-preview) |
-| Use it from Python | [Python API](#python-api) |
-| Check platform dependencies | [Platform Notes](#platform-notes) |
-| Understand the internals | [Architecture](https://github.com/ABClize/mdtopdf/blob/main/docs/architecture.md) |
-
-## Quick Start
-
-Install the package:
+Check the machine:
 
 ```shell
-python -m pip install mdtopdf
+mdtopdf doctor --json
 ```
 
-Check your environment:
+Convert a file:
 
 ```shell
-mdtopdf doctor
+mdtopdf convert report.md -o report.pdf --overwrite
 ```
 
-Convert Markdown to PDF:
-
-```shell
-mdtopdf convert report.md -o report.pdf
-```
-
-Try the bundled visual test document from a cloned checkout:
+Try the bundled visual test document:
 
 ```shell
 git clone https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e .[dev]
-mdtopdf convert examples/visual-test.md -o visual-test.pdf --overwrite
-mdtopdf html examples/visual-test.md -o visual-test.html --overwrite
+mdtopdf html examples/visual-test-en.md -o visual-test-en.html --overwrite
+mdtopdf convert examples/visual-test-en.md -o visual-test-en.pdf --overwrite --json
 ```
 
-## Visual Output
+The same visual test is also available in Chinese at
+`examples/visual-test-cn.md`.
 
-`mdtopdf` uses the same Markdown rendering pipeline for both HTML preview and
-PDF export, so you can tune styles quickly before producing the final document.
+## Agent workflow
 
-![mdtopdf workflow](assets/readme/workflow.png)
+```shell
+mdtopdf doctor --json
+mdtopdf convert report.md -o report.pdf --overwrite --json
+```
+
+Use HTML preview when layout needs a quick look:
+
+```shell
+mdtopdf html report.md -o report.html --overwrite --json
+mdtopdf convert report.md -o report.pdf --overwrite --json
+```
+
+`convert --json` returns the input path, output path, file size, theme, and
+render method. If conversion fails in JSON mode, the error is structured enough
+for an agent to show the command, explain the likely cause, and retry after a
+fix.
+
+## Visual output
+
+HTML preview and PDF export use the same Markdown pipeline. HTML is useful for
+quick checks of typography, spacing, and images; PDF is the final page layout.
+
+<p align="center">
+  <img src="assets/readme/workflow.png" alt="mdtopdf workflow" width="900">
+</p>
 
 | HTML preview | PDF output |
 | --- | --- |
 | ![HTML preview](assets/readme/html-preview.png) | ![PDF output](assets/readme/pdf-output.png) |
 
+## How it works
+
+```text
+Markdown -> markdown-it-py HTML -> theme/custom CSS -> WeasyPrint PDF
+```
+
+Mermaid rendering is optional. If a local `mmdc` command exists, Mermaid blocks
+render to SVG. If it is missing, conversion still succeeds and Mermaid blocks
+remain visible as highlighted code.
+
 ## Features
 
-| Feature | What it gives you |
+| Feature | Notes |
 | --- | --- |
-| CommonMark rendering | Tables, strikethrough, task lists, footnotes, heading anchors, and fenced code blocks. |
-| Obsidian-compatible authoring | Wikilinks, aliases, frontmatter hiding, comments, highlights, and typed callouts. |
-| Math without a CDN | Inline and block TeX through bundled KaTeX assets running locally in Python. |
-| Mermaid support | Fenced Mermaid blocks render to SVG when a local `mmdc` command is installed. |
-| Safe HTML subset | Common inline document tags are allowed while unsafe raw HTML stays escaped by default. |
-| Themed output | Built-in print CSS plus optional custom CSS appended after the selected theme. |
-| HTML preview | Generate standalone HTML before PDF export for fast browser-based style checks. |
-| Automation-friendly CLI | `--json` output is available for scripts, agents, and CI jobs. |
-| Python API | Convert strings or files from your own Python code. |
+| JSON output | `--json` is available for conversion, HTML preview, doctor, and theme listing. |
+| Environment checks | `doctor --json` checks Python imports, native WeasyPrint libraries, Windows DLL paths, and Mermaid availability. |
+| Local rendering | Markdown, CSS, math, Mermaid SVG generation, and PDF export stay on the machine. |
+| HTML preview | Generate standalone HTML before PDF export for fast visual inspection. |
+| Obsidian compatibility | Wikilinks, aliases, frontmatter hiding, comments, highlights, and typed callouts. |
+| Document Markdown | Tables, task lists, footnotes, heading anchors, fenced code, and Pygments highlighting. |
+| KaTeX math | Inline and block TeX render with bundled KaTeX assets, without a CDN. |
+| Safe HTML default | Common inline document tags are allowed; unsafe raw HTML stays escaped unless opted in. |
+| Python API | Convert Markdown strings or files from your own code. |
 
-## Usage
+## Commands
 
 Render a PDF:
 
@@ -97,7 +141,13 @@ mdtopdf convert report.md -o report.pdf
 mdtopdf convert report.md -o report.pdf --overwrite
 ```
 
-Customize document metadata and page chrome:
+Preview HTML:
+
+```shell
+mdtopdf html report.md -o report.html --overwrite
+```
+
+Set document metadata and page chrome:
 
 ```shell
 mdtopdf convert report.md -o report.pdf --title "Report"
@@ -113,56 +163,21 @@ mdtopdf convert report.md -o report.pdf --base-url assets
 mdtopdf convert report.md -o report.pdf --resource-dir attachments
 ```
 
+Return JSON:
+
+```shell
+mdtopdf --json convert report.md -o report.pdf --overwrite
+mdtopdf doctor --json
+mdtopdf themes list --json
+```
+
 Allow raw HTML only for trusted local Markdown:
 
 ```shell
 mdtopdf convert trusted.md -o trusted.pdf --unsafe-html
 ```
 
-Emit machine-readable JSON:
-
-```shell
-mdtopdf --json convert report.md -o report.pdf --overwrite
-mdtopdf convert report.md -o report.pdf --overwrite --json
-```
-
-## HTML Preview
-
-Generate standalone HTML with the same Markdown, theme, math, Mermaid, resource
-resolution, and safe-HTML handling used by PDF conversion:
-
-```shell
-mdtopdf html report.md -o report.html --overwrite
-```
-
-This is useful for fast checks of typography, spacing, tables, code blocks,
-callouts, images, math, and Mermaid rendering. Use the generated PDF for final
-checks of page size, headers, footers, pagination, and cross-page layout.
-
-## Commands
-
-| Command | Description |
-| --- | --- |
-| `mdtopdf convert INPUT.md -o OUTPUT.pdf` | Render Markdown to PDF. |
-| `mdtopdf html INPUT.md -o OUTPUT.html` | Render standalone HTML for style preview. |
-| `mdtopdf doctor` | Check Python imports, WeasyPrint initialization, and common Windows DLL paths. |
-| `mdtopdf themes list` | List built-in themes. Version 1 ships `default`. |
-
-`convert` and `html` add page header and footer CSS by default. The header uses
-the input file stem, and the footer shows page numbers. Use `--header TEXT`,
-`--footer TEXT`, `--no-header`, `--no-footer`, and `--no-page-numbers` to adjust
-that output.
-
-`--base-url` sets the renderer base path for relative resources already present
-in the generated HTML. `--resource-dir` is a local lookup directory for bare
-image names such as `![[image.png]]` or `![](image.png)`. It does not search
-recursively and does not alter image paths that already include a directory.
-
 ## Python API
-
-The public Python API is Obsidian-compatible by default. Callers can pass
-Markdown text or a Markdown file and get the same frontmatter, comment,
-wikilink, emphasis, math, Mermaid, and safe-HTML handling used by the CLI.
 
 ```python
 from mdtopdf import (
@@ -180,7 +195,7 @@ markdown_file_to_html("report.md", output_path="report.html", overwrite=True)
 markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 ```
 
-## Markdown Support
+## Markdown support
 
 `mdtopdf` supports:
 
@@ -201,43 +216,28 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 - Mermaid diagrams through local `mmdc`, when installed
 
 Raw HTML is disabled by default except for the safe subset above. For trusted
-local Markdown, pass `--unsafe-html` to allow raw HTML through to WeasyPrint.
+local Markdown, pass `--unsafe-html`.
 
-## Mermaid Diagrams
+## Mermaid diagrams
 
-Mermaid is optional. For offline-stable Python wheel usage, `mdtopdf` only uses
-a persistent local `mmdc` command from `@mermaid-js/mermaid-cli`. It does not
-call Mermaid.ink and does not download `@mermaid-js/mermaid-cli` through `npx`
-during conversion.
-
-Example:
-
-````markdown
-```mermaid
-graph TD
-  A[Markdown] --> B[Mermaid SVG]
-  B --> C[PDF]
-```
-````
-
-Install a persistent local renderer with:
+Install a persistent local renderer:
 
 ```shell
 npm install -g @mermaid-js/mermaid-cli
 ```
 
-If `mmdc` is not available, conversion still succeeds and Mermaid fenced blocks
-remain visible as code. Run `mdtopdf doctor --json` to check whether Mermaid
+`mdtopdf` does not call Mermaid.ink and does not download Mermaid CLI through
+`npx` during conversion. Run `mdtopdf doctor --json` to check whether Mermaid
 rendering is available.
 
-## Platform Notes
+## Platform notes
 
-`mdtopdf` requires Python 3.10+ and installs its Python dependencies from PyPI,
-including `click`, `markdown-it-py`, `mdit-py-plugins`, `pygments`,
-`latex2mathml`, `matplotlib`, `mini-racer`, and `weasyprint`.
+`mdtopdf` requires Python 3.10+ and installs its Python dependencies from PyPI:
+`click`, `markdown-it-py`, `mdit-py-plugins`, `pygments`, `latex2mathml`,
+`matplotlib`, `mini-racer`, and `weasyprint`.
 
 WeasyPrint also needs native libraries such as Pango, GLib, and Cairo. Linux
-and macOS package managers usually provide these through system packages.
+and macOS package managers usually provide them through system packages.
 
 On Windows, install the native libraries separately. A common MSYS2 setup is:
 

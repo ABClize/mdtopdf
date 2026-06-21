@@ -5,12 +5,12 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mdtopdf"
 version = "0.1.0"
-description = "Convert Markdown to themed PDF using markdown-it-py and Python WeasyPrint"
+description = "Agent-friendly Markdown-to-PDF CLI with HTML preview and JSON diagnostics"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
-keywords = ["markdown", "pdf", "weasyprint", "obsidian", "cli"]
+keywords = ["markdown", "pdf", "markdown-to-pdf", "weasyprint", "obsidian", "cli", "agent", "automation", "json"]
 authors = [
   { name = "rainp" }
 ]

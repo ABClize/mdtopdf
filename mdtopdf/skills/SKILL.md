@@ -1,12 +1,38 @@
 ---
 name: "mdtopdf"
-description: "Convert Markdown files to themed PDFs using markdown-it-py and Python WeasyPrint."
+description: "Agent-friendly Markdown-to-PDF CLI with HTML preview, JSON diagnostics, Obsidian-compatible Markdown, KaTeX math, Mermaid support, and Python WeasyPrint output."
 ---
 
 # mdtopdf
 
-Use `mdtopdf` when you need a scriptable Markdown to PDF conversion
-tool that does not depend on Pandoc.
+Use `mdtopdf` when an agent needs to turn local Markdown into a PDF without
+Pandoc or a remote renderer. It is designed for agent-written reports,
+Obsidian-style notes, and technical documents that need a real output file plus
+machine-readable command results.
+
+## Agent Workflow
+
+Check the machine first when the environment is new or unknown:
+
+```powershell
+mdtopdf doctor --json
+```
+
+Use HTML preview when layout matters:
+
+```powershell
+mdtopdf html .\input.md -o .\preview.html --overwrite --json
+```
+
+Generate the final PDF:
+
+```powershell
+mdtopdf convert .\input.md -o .\output.pdf --overwrite --json
+```
+
+For simple reports, skip the preview and call `convert --json` directly after
+`doctor --json`. In JSON mode, failures return structured data that an agent can
+show or act on.
 
 ## Requirements
 
@@ -17,7 +43,7 @@ tool that does not depend on Pandoc.
 On Windows, native libraries are not installed automatically. Run:
 
 ```powershell
-mdtopdf doctor
+mdtopdf doctor --json
 ```
 
 If needed, install MSYS2 Pango and set the DLL directory:
@@ -27,25 +53,7 @@ pacman -S mingw-w64-x86_64-pango
 setx WEASYPRINT_DLL_DIRECTORIES "D:\Environment\msys64\mingw64\bin"
 ```
 
-## Commands
-
-### Convert
-
-```powershell
-mdtopdf convert .\input.md -o .\output.pdf --overwrite
-```
-
-### HTML Preview
-
-```powershell
-mdtopdf html .\input.md -o .\preview.html --overwrite
-```
-
-Use this for fast browser-based style checks. It runs the same Markdown,
-Obsidian compatibility, math, Mermaid, theme, and custom CSS pipeline as PDF
-conversion, but writes standalone HTML instead of calling WeasyPrint.
-
-Useful options:
+## Useful Options
 
 - `--theme default`: use the built-in print theme.
 - `--css custom.css`: append custom CSS after the selected theme.
@@ -62,34 +70,23 @@ Useful options:
 - `--unsafe-html`: allow raw HTML in trusted Markdown input.
 - `--json`: return machine-readable output.
 
+## Markdown Support
+
 Markdown supports CommonMark plus tables, task lists, footnotes, fenced code,
 Obsidian-style `==highlight==`, Obsidian-style `[[target|alias]]` wikilinks
 including table-safe `[[target\|alias]]`, Obsidian-style `%%comment%%`
 comments outside code, Obsidian-style `> [!note]` callouts, and a small safe
-HTML subset for document authoring:
-`<br>`, `<kbd>`, `<big>`, `<small>`, `<sup>`, `<sub>`,
-`<mark>`, `<strong>`, `<em>`, `<b>`, `<i>`, `<u>`, `<s>`, `<del>`, `<ins>`,
-`<span>`, `<ruby>`, `<rt>`, `<rp>`, `<abbr>`, `<hr>`, and `<wbr>`. Legacy
-`<font color="...">` is converted to safe color-only `<span>` output, and
-color-only styles on text-formatting tags are preserved. Other raw HTML stays
-escaped by default. HTML comments outside code are hidden instead of printed.
-For trusted local Markdown, pass `--unsafe-html` to allow raw HTML through.
+HTML subset for document authoring.
 
 Markdown supports `$inline$`, `$$block$$`, and common `amsmath` environments for
-LaTeX formulas. The CLI renders formulas offline through bundled KaTeX assets
-inside the Python process with `mini-racer`; users do not need Node.js, remote
-JavaScript, or CDN assets. SVG, MathML, chemistry HTML, and array-table rendering
-remain fallbacks for unsupported TeX.
+LaTeX formulas. Formulas render offline through bundled KaTeX assets inside the
+Python process with `mini-racer`; users do not need Node.js, remote JavaScript,
+or CDN assets.
 
-Mermaid diagrams are supported with fenced `mermaid` code blocks. The CLI renders
-them to SVG only through local `mmdc` when available. It does not call
-Mermaid.ink or download `@mermaid-js/mermaid-cli` through `npx` during
-conversion. If `mmdc` is missing, Mermaid blocks remain highlighted code.
-
-`--base-url` and `--resource-dir` have different jobs. `--base-url` is passed to
-the HTML/PDF renderer as the base path for relative resources. `--resource-dir`
-is a Markdown preprocessing hint for bare image names only; it does not search
-recursively and does not guess Obsidian attachment folder names.
+Mermaid diagrams are supported with fenced `mermaid` code blocks. The CLI
+renders them to SVG only through local `mmdc` when available. It does not call
+Mermaid.ink or download Mermaid CLI through `npx` during conversion. If `mmdc`
+is missing, Mermaid blocks remain highlighted code.
 
 ## Python API
 
@@ -106,29 +103,13 @@ Use `markdown_to_html(markdown_text)` for rendered HTML,
 `markdown_file_to_pdf(input_path, output_path=..., ...)` for file-based PDF
 conversion.
 
-### Doctor
-
-```powershell
-mdtopdf doctor --json
-```
-
-Use this before conversion when diagnosing WeasyPrint installation problems. The
-JSON includes package import status, `WEASYPRINT_DLL_DIRECTORIES`, Windows DLL
-probes, and recommendations.
-
-### Themes
-
-```powershell
-mdtopdf themes list --json
-```
-
-Version 1 ships `default`.
-
 ## Agent Guidance
 
-- Prefer `--json` for automation.
-- Use `html` for fast style preview and `convert` for final PDF verification.
-- If `convert` fails with a WeasyPrint or DLL error, run `doctor --json` and use
-  the recommendations field to explain the next system-level fix.
-- Do not look for Pandoc; this CLI intentionally uses `markdown-it-py` plus
-  WeasyPrint.
+- Prefer `--json` for commands an agent runs.
+- Use `doctor --json` before conversion on a new machine or when native library
+  state is unknown.
+- Use `html` for quick layout checks and `convert` for the final PDF.
+- If conversion fails with a WeasyPrint or DLL error, run `doctor --json` and
+  use the recommendations field for the next system-level fix.
+- Do not look for Pandoc; this CLI uses `markdown-it-py` plus WeasyPrint.
+- Version `0.1.0` ships the built-in theme `default`.
