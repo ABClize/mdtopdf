@@ -1,11 +1,6 @@
 <h1 align="center">mdtopdf：面向 Agent 的 Markdown 转 PDF CLI</h1>
 
 <p align="center">
-  <strong>Agent 写 Markdown，人要 PDF。mdtopdf 负责中间那一步。</strong><br>
-  本地渲染、HTML 预览、JSON 诊断，给 Agent 和脚本一个稳定的文档出口。
-</p>
-
-<p align="center">
   <a href="README.md">English README</a> | 中文文档
 </p>
 
@@ -13,12 +8,12 @@
   <a href="#快速上手"><img src="https://img.shields.io/badge/快速上手-2_分钟-blue?style=for-the-badge" alt="快速上手"></a>
   <a href="#agent-调用方式"><img src="https://img.shields.io/badge/Agent_friendly-JSON_输出-green?style=for-the-badge" alt="Agent friendly"></a>
   <a href="#输出效果"><img src="https://img.shields.io/badge/PDF_页面-渲染效果-purple?style=for-the-badge" alt="PDF 页面渲染效果"></a>
-  <a href="https://pypi.org/project/agent-markdown-pdf/"><img src="https://img.shields.io/pypi/v/agent-markdown-pdf.svg?style=for-the-badge" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/agent-markdown-pdf/"><img src="https://img.shields.io/pypi/v/agent_markdown_pdf.svg?style=for-the-badge" alt="PyPI version"></a>
   <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/pypi/pyversions/agent-markdown-pdf.svg" alt="Python versions">
+  <img src="https://img.shields.io/pypi/pyversions/agent_markdown_pdf.svg" alt="Python versions">
   <img src="https://img.shields.io/badge/output-JSON_%2B_Human-blueviolet" alt="JSON and human output">
   <img src="https://img.shields.io/badge/backend-WeasyPrint-2f855a" alt="WeasyPrint backend">
   <img src="https://img.shields.io/badge/status-alpha-f59e0b" alt="Alpha status">
