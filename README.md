@@ -14,7 +14,7 @@
   <a href="#agent-workflow"><img src="https://img.shields.io/badge/Agent_Friendly-JSON_Output-green?style=for-the-badge" alt="Agent Friendly"></a>
   <a href="#visual-output"><img src="https://img.shields.io/badge/PDF_Pages-Rendered-purple?style=for-the-badge" alt="Rendered PDF pages"></a>
   <a href="https://pypi.org/project/agent-markdown-pdf/"><img src="https://img.shields.io/pypi/v/agent-markdown-pdf.svg?style=for-the-badge" alt="PyPI version"></a>
-  <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Apache_2.0-yellow?style=for-the-badge" alt="License"></a>
+  <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
 </p>
 
 <p align="center">
@@ -298,5 +298,5 @@ python -m twine check dist/*
 
 ## License
 
-Apache-2.0. Bundled KaTeX assets are distributed under the MIT license; see
+MIT. Bundled KaTeX assets are also distributed under the MIT license; see
 `mdtopdf/vendor/katex/LICENSE`.
