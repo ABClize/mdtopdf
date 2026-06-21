@@ -1,11 +1,6 @@
 <h1 align="center">mdtopdf: Agent-friendly Markdown-to-PDF CLI</h1>
 
 <p align="center">
-  <strong>Agents write Markdown. People need PDFs. mdtopdf handles the step in between.</strong><br>
-  Local rendering, HTML preview, and JSON diagnostics give agents and scripts a stable document output path.
-</p>
-
-<p align="center">
   <a href="https://github.com/ABClize/mdtopdf/blob/main/README_CN.md">中文文档</a>
 </p>
 
@@ -13,12 +8,12 @@
   <a href="#quick-start"><img src="https://img.shields.io/badge/Quick_Start-2_min-blue?style=for-the-badge" alt="Quick Start"></a>
   <a href="#agent-workflow"><img src="https://img.shields.io/badge/Agent_Friendly-JSON_Output-green?style=for-the-badge" alt="Agent Friendly"></a>
   <a href="#visual-output"><img src="https://img.shields.io/badge/PDF_Pages-Rendered-purple?style=for-the-badge" alt="Rendered PDF pages"></a>
-  <a href="https://pypi.org/project/agent-markdown-pdf/"><img src="https://img.shields.io/pypi/v/agent-markdown-pdf.svg?style=for-the-badge" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/agent-markdown-pdf/"><img src="https://img.shields.io/pypi/v/agent_markdown_pdf.svg?style=for-the-badge" alt="PyPI version"></a>
   <a href="https://github.com/ABClize/mdtopdf/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/pypi/pyversions/agent-markdown-pdf.svg" alt="Python versions">
+  <img src="https://img.shields.io/pypi/pyversions/agent_markdown_pdf.svg" alt="Python versions">
   <img src="https://img.shields.io/badge/output-JSON_%2B_Human-blueviolet" alt="JSON and human output">
   <img src="https://img.shields.io/badge/backend-WeasyPrint-2f855a" alt="WeasyPrint backend">
   <img src="https://img.shields.io/badge/status-alpha-f59e0b" alt="Alpha status">
