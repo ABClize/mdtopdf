@@ -33,8 +33,19 @@ GENERIC_FONT_FAMILIES = {
 }
 
 RECOMMENDED_FONT_GROUPS = {
+    "latin_sans": {
+        "description": "Latin body text and digits",
+        "preferred": ("Segoe UI", "Arial", "Liberation Sans", "DejaVu Sans"),
+        "families": (
+            "Segoe UI",
+            "Arial",
+            "Liberation Sans",
+            "DejaVu Sans",
+        ),
+    },
     "cjk_sans": {
         "description": "CJK body text",
+        "preferred": ("Microsoft YaHei",),
         "families": (
             "Microsoft YaHei",
             "PingFang SC",
@@ -47,6 +58,7 @@ RECOMMENDED_FONT_GROUPS = {
     },
     "monospace": {
         "description": "Code blocks",
+        "preferred": ("Cascadia Mono", "Cascadia Code"),
         "families": (
             "Cascadia Mono",
             "Cascadia Code",
@@ -58,6 +70,7 @@ RECOMMENDED_FONT_GROUPS = {
     },
     "math": {
         "description": "Math fallback",
+        "preferred": ("Cambria Math",),
         "families": (
             "Cambria Math",
             "STIX Two Math",
@@ -67,6 +80,7 @@ RECOMMENDED_FONT_GROUPS = {
     },
     "emoji": {
         "description": "Emoji glyphs",
+        "preferred": ("Segoe UI Emoji",),
         "families": (
             "Segoe UI Emoji",
             "Apple Color Emoji",
@@ -115,6 +129,8 @@ def match_font_name(family: str, available: set[str]) -> str | None:
     target = family.lower()
     for name in sorted(available):
         current = name.lower()
+        if "emoji" not in target and " emoji" in current:
+            continue
         if current == target or current.startswith(target + " "):
             return name
     return None
@@ -137,6 +153,7 @@ def inspect_recommended_font_groups() -> dict[str, Any]:
     fontconfig_emoji = _fontconfig_emoji_match()
     for group_name, group in RECOMMENDED_FONT_GROUPS.items():
         recommended = list(group["families"])
+        preferred = list(group.get("preferred", group["families"][:1]))
         found = []
         for family in recommended:
             match = match_font_name(family, available)
@@ -146,12 +163,15 @@ def inspect_recommended_font_groups() -> dict[str, Any]:
             for family in fontconfig_emoji.get("families", []):
                 if family not in found:
                     found.append(family)
+        missing = [family for family in recommended if not match_font_name(family, available)]
         result["groups"][group_name] = {
             "ok": bool(found),
             "description": group["description"],
+            "preferred": preferred,
+            "preferred_found": any(family not in missing for family in preferred),
             "recommended": recommended,
             "found": found,
-            "missing": [family for family in recommended if not match_font_name(family, available)],
+            "missing": missing,
         }
         if group_name == "emoji":
             result["groups"][group_name]["fontconfig"] = fontconfig_emoji

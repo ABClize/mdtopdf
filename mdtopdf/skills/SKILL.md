@@ -1,108 +1,103 @@
 ---
 name: "mdtopdf"
-description: "Use when an agent needs to install or run mdtopdf: an agent-friendly Markdown-to-PDF CLI with JSON diagnostics, HTML preview, Obsidian-compatible Markdown, local KaTeX math, optional local Mermaid rendering, and WeasyPrint environment checks."
+description: "Install and run mdtopdf, an agent-friendly Markdown-to-PDF CLI. Use when converting Markdown to PDF or HTML, checking WeasyPrint/mdtopdf runtime health, using Obsidian-style resources, custom CSS, KaTeX, Mermaid, fonts, or JSON diagnostics."
 ---
 
 # mdtopdf
 
-Use this skill to turn local Markdown into a local PDF with the `mdtopdf` CLI.
-Prefer the CLI over the Python API unless the user explicitly asks for code
-integration.
-
 ## Names
 
-| Purpose | Name |
-| --- | --- |
-| PyPI distribution | `agent-markdown-pdf` |
-| CLI command | `mdtopdf` |
-| Python import | `mdtopdf` |
+- PyPI package: `agent-markdown-pdf`
+- CLI command: `mdtopdf`
+- Python import: `mdtopdf`
 
-Install the package when the command is missing:
+## Basic Flow
 
-```powershell
-python -m pip install agent-markdown-pdf
+Install or upgrade if the command is missing:
+
+```shell
+python -m pip install -U agent-markdown-pdf
 ```
 
-## Workflow
+Check the runtime before converting on a new machine:
 
-Check a new or unknown machine first:
-
-```powershell
+```shell
 mdtopdf doctor --json
 ```
 
-Generate a PDF:
+Convert Markdown to PDF:
 
-```powershell
-mdtopdf convert .\input.md -o .\output.pdf --overwrite --json
+```shell
+mdtopdf convert INPUT.md -o OUTPUT.pdf --overwrite --json
 ```
 
 Use HTML preview only when layout needs debugging:
 
-```powershell
-mdtopdf html .\input.md -o .\preview.html --overwrite --json
-mdtopdf convert .\input.md -o .\output.pdf --overwrite --json
+```shell
+mdtopdf html INPUT.md -o preview.html --overwrite --json
+mdtopdf convert INPUT.md -o OUTPUT.pdf --overwrite --json
 ```
 
-## Resource Paths
+## Useful Options
 
-- Use `--base-url PATH_OR_URL` when the Markdown contains relative images or links.
-- Use `--resource-dir PATH` for Obsidian-style image names such as `![[image.png]]`.
-- Use `--css custom.css` when the user provides print CSS.
-- Conversion checks CSS font stacks after theme and custom CSS are combined.
-  Missing fonts are warnings, not hard failures.
-- Use `--unsafe-html` only for trusted local Markdown.
+- `--base-url PATH_OR_URL`: resolve relative images and links.
+- `--resource-dir PATH`: resolve Obsidian-style image names such as `![[image.png]]`.
+- `--css print.css`: apply custom print CSS.
+- `--unsafe-html`: allow raw HTML only for trusted local Markdown.
+- `--json`: prefer this for agent workflows.
 
-## Environment Fixes
+## Environment
 
-`mdtopdf` uses WeasyPrint, so PDF output needs native Pango, GLib, and Cairo
-libraries.
+`mdtopdf` uses WeasyPrint. If PDF export fails, run:
 
-On Windows, run `mdtopdf doctor --json` before guessing. If the JSON output says
-native DLLs are missing, install MSYS2 Pango and set the DLL directory for that
-machine, for example:
+```shell
+mdtopdf doctor --json
+```
+
+Windows usually needs MSYS2 Pango/GLib/Cairo DLLs:
 
 ```powershell
 pacman -S mingw-w64-x86_64-pango
 setx WEASYPRINT_DLL_DIRECTORIES "D:\Environment\msys64\mingw64\bin"
 ```
 
-The exact MSYS2 path may differ.
-
-On Linux containers, install the native WeasyPrint packages before installing
-`agent-markdown-pdf`.
-
-For stable Chinese/Japanese/Korean and emoji output in containers, install the
-CJK and emoji fonts the user wants. Emoji spans prefer Segoe UI Emoji on every
-platform, including Linux. Linux containers only get the same glyphs when that
-font is available in the runtime; otherwise mdtopdf falls back to installed
-emoji fonts such as Apple Color Emoji, Noto Emoji, or Noto Color Emoji. Noto
-CJK plus Noto Color Emoji is still a practical open-font fallback on Debian or
-Ubuntu, but color emoji in the final PDF is best-effort because it depends on
-WeasyPrint, Pango/Cairo, and the PDF viewer:
+Linux containers need native libraries and fonts:
 
 ```shell
-apt-get install -y fonts-noto-cjk fonts-noto-color-emoji fonts-stix fonts-dejavu-core
+apt-get update
+apt-get install -y --no-install-recommends \
+  fontconfig \
+  libcairo2 \
+  libffi-dev \
+  libgdk-pixbuf-2.0-0 \
+  libpango-1.0-0 \
+  libpangoft2-1.0-0 \
+  shared-mime-info \
+  fonts-liberation \
+  fonts-dejavu-core \
+  fonts-noto-cjk
 fc-cache -f
 ```
 
-`mdtopdf doctor --json` reports recommended CJK, emoji, monospace, and math
-fallback font availability. Missing fonts do not always stop conversion, but
-they can change glyph coverage, emoji size, line breaks, and pagination.
+Install optional support only when needed:
+
+```shell
+npm install -g @mermaid-js/mermaid-cli
+apt-get install -y --no-install-recommends fonts-stix fonts-noto-color-emoji
+```
+
+Use Cascadia Code for closer default code-block styling when available:
+
+```shell
+apt-get install -y --no-install-recommends fonts-cascadia-code
+```
 
 ## Failure Handling
 
-- Prefer `--json` so failures are structured.
-- If CJK text renders as boxes or pagination differs between machines, install
-  Noto CJK fonts and rerun the conversion.
-- If emoji render as boxes, missing glyphs, or tiny glyphs on Linux, provide
-  Segoe UI Emoji in the runtime or install a fallback emoji font, run
-  `fc-cache -f`, and rerun the conversion.
-- If conversion fails with a WeasyPrint, Pango, GLib, Cairo, or DLL error, run
-  `mdtopdf doctor --json` and follow its recommendations.
-- If Mermaid diagrams do not render, check whether local `mmdc` is installed.
-  Mermaid is optional; `mdtopdf` does not call Mermaid.ink or download Mermaid
-  CLI during conversion.
+- Read JSON errors first; do not guess from stderr alone.
+- If conversion fails with WeasyPrint, Pango, GLib, Cairo, or DLL errors, fix the items reported by `doctor --json`.
+- If images are missing, add `--base-url` or `--resource-dir`.
+- If Mermaid diagrams do not render, install local `mmdc`; `mdtopdf` does not call Mermaid.ink or auto-download Mermaid CLI.
+- If CJK text renders as boxes, install a CJK font such as Noto CJK or provide the intended system font.
+- If digits disappear in Chrome/PDFium output, verify the runtime has Latin fonts such as Liberation Sans or DejaVu Sans and render a PDFium screenshot to confirm.
 - Do not look for Pandoc; this CLI uses `markdown-it-py` and WeasyPrint.
-- Report the exact command, JSON error, and output path when handing results
-  back to the user.

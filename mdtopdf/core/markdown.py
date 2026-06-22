@@ -43,6 +43,11 @@ from mdtopdf.core.obsidian import (
 
 DEFAULT_THEME = "default"
 SUPPORTED_THEMES = (DEFAULT_THEME,)
+PAGE_MARGIN_FONT_FAMILY = (
+    '"Segoe UI", Arial, "Liberation Sans", "DejaVu Sans", '
+    '"Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", '
+    '"Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif'
+)
 
 
 @dataclass(frozen=True)
@@ -990,6 +995,7 @@ def _page_margin_css(page_header: str | None, page_footer: str | None, page_numb
                 "  @top-center {",
                 f"    content: {_css_string(page_header)};",
                 '    color: #6b7280;',
+                f"    font-family: {PAGE_MARGIN_FONT_FAMILY};",
                 '    font-size: 8.5pt;',
                 '    vertical-align: middle;',
                 "  }",
@@ -1003,6 +1009,7 @@ def _page_margin_css(page_header: str | None, page_footer: str | None, page_numb
                 "  @bottom-center {",
                 f"    content: {footer_content};",
                 '    color: #6b7280;',
+                f"    font-family: {PAGE_MARGIN_FONT_FAMILY};",
                 '    font-size: 8.5pt;',
                 '    vertical-align: middle;',
                 "  }",

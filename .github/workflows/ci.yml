@@ -31,7 +31,8 @@ jobs:
       - name: Install native PDF dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
+          sudo apt-get install -y --no-install-recommends \
+            fontconfig \
             libcairo2 \
             libffi-dev \
             libgdk-pixbuf-2.0-0 \
@@ -40,8 +41,13 @@ jobs:
             poppler-utils \
             shared-mime-info \
             fonts-dejavu-core \
+            fonts-liberation \
             fonts-noto-cjk \
             fonts-stix
+          if apt-cache show fonts-cascadia-code >/dev/null 2>&1; then
+            sudo apt-get install -y --no-install-recommends fonts-cascadia-code
+          fi
+          fc-cache -f
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
