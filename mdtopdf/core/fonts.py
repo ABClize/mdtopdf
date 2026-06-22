@@ -91,6 +91,14 @@ RECOMMENDED_FONT_GROUPS = {
         ),
     },
 }
+PLATFORM_PREFERRED_FONT_GROUPS = {
+    "Linux": {
+        "latin_sans": ("Liberation Sans", "DejaVu Sans"),
+        "cjk_sans": ("Noto Sans CJK SC", "Noto Sans SC"),
+        "math": ("STIXGeneral", "STIX Two Math"),
+        "emoji": ("Noto Emoji",),
+    },
+}
 CJK_CAPABLE_FONT_FAMILIES = (
     "Noto Sans SC",
     "Noto Sans CJK SC",
@@ -136,7 +144,7 @@ def match_font_name(family: str, available: set[str]) -> str | None:
     return None
 
 
-def inspect_recommended_font_groups() -> dict[str, Any]:
+def inspect_recommended_font_groups(platform_system: str | None = None) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ok": False,
         "backend": "matplotlib.font_manager",
@@ -153,7 +161,7 @@ def inspect_recommended_font_groups() -> dict[str, Any]:
     fontconfig_emoji = _fontconfig_emoji_match()
     for group_name, group in RECOMMENDED_FONT_GROUPS.items():
         recommended = list(group["families"])
-        preferred = list(group.get("preferred", group["families"][:1]))
+        preferred = list(_preferred_families(group_name, group, platform_system))
         found = []
         for family in recommended:
             match = match_font_name(family, available)
@@ -178,6 +186,17 @@ def inspect_recommended_font_groups() -> dict[str, Any]:
 
     result["ok"] = all(info["ok"] for info in result["groups"].values())
     return result
+
+
+def _preferred_families(
+    group_name: str,
+    group: dict[str, Any],
+    platform_system: str | None,
+) -> tuple[str, ...]:
+    platform_preferred = PLATFORM_PREFERRED_FONT_GROUPS.get(platform_system or "", {})
+    if isinstance(platform_preferred, dict) and group_name in platform_preferred:
+        return platform_preferred[group_name]
+    return group.get("preferred", group["families"][:1])
 
 
 def inspect_css_font_usage(css: str, *, document_text: str | None = None) -> dict[str, Any]:

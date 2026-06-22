@@ -52,10 +52,11 @@ def run_doctor() -> dict[str, Any]:
 
     add_weasyprint_dll_directories()
 
+    platform_system = platform.system()
     result: dict[str, Any] = {
         "ok": False,
         "platform": {
-            "system": platform.system(),
+            "system": platform_system,
             "release": platform.release(),
             "machine": platform.machine(),
         },
@@ -69,7 +70,7 @@ def run_doctor() -> dict[str, Any]:
         "packages": {},
         "tools": {},
         "native_libraries": _inspect_native_libraries(),
-        "fonts": _inspect_fonts(),
+        "fonts": _inspect_fonts(platform_system),
         "recommendations": [],
     }
 
@@ -211,8 +212,8 @@ def _env_dll_directories() -> list[str]:
     return [part.strip() for part in raw.split(os.pathsep) if part.strip()]
 
 
-def _inspect_fonts() -> dict[str, Any]:
-    return inspect_recommended_font_groups()
+def _inspect_fonts(platform_system: str | None = None) -> dict[str, Any]:
+    return inspect_recommended_font_groups(platform_system)
 
 
 def _inspect_fontconfig() -> dict[str, Any]:
@@ -283,15 +284,15 @@ def _recommendations(result: dict[str, Any]) -> list[str]:
             "On Debian or Ubuntu, use: sudo apt-get install fonts-liberation fonts-dejavu-core"
         )
     if font_groups.get("cjk_sans") and not font_groups["cjk_sans"].get("ok"):
-        recommendations.append(
-            "Provide Microsoft YaHei in the runtime to match the default theme's Windows-like Chinese typography. "
-            "On Debian or Ubuntu, Noto CJK is a supported fallback: sudo apt-get install fonts-noto-cjk"
-        )
-    elif is_linux and font_groups.get("cjk_sans") and "Microsoft YaHei" in font_groups["cjk_sans"].get("missing", []):
-        recommendations.append(
-            "Optional: provide Microsoft YaHei in the Linux runtime to match the default theme's Windows-like "
-            "Chinese typography. Without it, output falls back to installed CJK fonts such as Noto CJK."
-        )
+        if is_linux:
+            recommendations.append(
+                "Install Noto CJK for Chinese text on Linux: sudo apt-get install fonts-noto-cjk"
+            )
+        else:
+            recommendations.append(
+                "Install or enable a CJK sans font for Chinese text, such as Microsoft YaHei, "
+                "PingFang SC, Noto Sans CJK SC, or Source Han Sans SC."
+            )
     if font_groups.get("monospace") and not font_groups["monospace"].get("ok"):
         recommendations.append(
             "Install a monospace font for code blocks. On Debian or Ubuntu, use: "
@@ -314,11 +315,32 @@ def _recommendations(result: dict[str, Any]) -> list[str]:
             "Optional: install STIX fonts for math fallback, for example: sudo apt-get install fonts-stix"
         )
     if font_groups.get("emoji") and not font_groups["emoji"].get("ok"):
+        if is_linux:
+            recommendations.append(
+                "Provide a monochrome emoji font such as Noto Emoji for stable PDF output on Linux. "
+                "Noto Color Emoji is widely packaged, but PDF viewers can render color emoji too small "
+                "or misaligned."
+            )
+        else:
+            recommendations.append(
+                "Install or enable a system emoji font such as Segoe UI Emoji, Apple Color Emoji, "
+                "Noto Color Emoji, or Twemoji Mozilla."
+            )
+    elif (
+        is_linux
+        and font_groups.get("emoji")
+        and "Noto Emoji" in font_groups["emoji"].get("missing", [])
+        and "Noto Color Emoji" in font_groups["emoji"].get("found", [])
+    ):
         recommendations.append(
-            "Provide Segoe UI Emoji in the runtime if you want the default theme's first-choice "
-            "emoji glyphs. If that is not available, install another emoji font and run fc-cache -f."
+            "Noto Color Emoji was found. It provides glyph coverage, but color emoji can render too small "
+            "or misaligned in WeasyPrint/PDFium output. Prefer monochrome Noto Emoji if emoji layout matters."
         )
-    elif font_groups.get("emoji") and "Segoe UI Emoji" in font_groups["emoji"].get("missing", []):
+    elif (
+        not is_linux
+        and font_groups.get("emoji")
+        and "Segoe UI Emoji" in font_groups["emoji"].get("missing", [])
+    ):
         recommendations.append(
             "Optional: provide Segoe UI Emoji if you want the default theme's preferred emoji glyphs. "
             "Existing emoji fallback fonts will still be used."

@@ -285,28 +285,25 @@ and macOS package managers usually provide them through system packages.
 The default theme uses a PDFium-safe Latin-first font stack. Latin fonts are
 listed before CJK fonts so ASCII digits, dates, versions, and page numbers are
 not embedded into CJK font subsets that some Chrome/PDFium renderers handle
-poorly. Chinese text still falls back to the CJK side of the stack, where
-`Microsoft YaHei` is the first preferred CJK font. If it is missing, the theme
-falls back to `PingFang SC`, `Noto Sans SC`, `Noto Sans CJK SC`,
-`Source Han Sans SC`, and other available CJK fonts.
+poorly. Chinese text still falls back to the CJK side of the stack.
 
-For Linux containers or agent sandboxes, install fontconfig plus the fonts you
-expect the default theme to use. A practical open-font baseline is:
+For Linux containers or agent sandboxes, use open fonts that can be installed
+from the distribution package manager. The recommended baseline is:
 
 ```shell
 sudo apt-get install -y --no-install-recommends \
   fontconfig \
-  fonts-noto-cjk \
   fonts-liberation \
-  fonts-dejavu-core
+  fonts-dejavu-core \
+  fonts-noto-cjk \
+  fonts-stix
 fc-cache -f
 ```
 
-This baseline is a fallback. If you want Linux Chinese typography to match the
-default Windows output more closely, provide `Microsoft YaHei` in the runtime
-under your own font license. `mdtopdf` names that font in CSS but does not
-bundle or download Microsoft font files. Providing Microsoft YaHei improves the
-Chinese fallback; the Latin-first order is still kept for PDFium-safe digits.
+With that setup, Linux output uses `Liberation Sans` / `DejaVu Sans` for Latin
+text and digits, `Noto Sans CJK SC` for Chinese, and STIX for math fallback.
+Microsoft YaHei and Segoe UI Emoji are not Linux runtime requirements and are
+not installed or distributed by `mdtopdf`.
 
 Code blocks prefer `Cascadia Mono` / `Cascadia Code`, then `Consolas`,
 `Noto Sans Mono CJK SC`, `Liberation Mono`, and `DejaVu Sans Mono`. On Debian,
@@ -314,20 +311,10 @@ Code blocks prefer `Cascadia Mono` / `Cascadia Code`, then `Consolas`,
 Cascadia Code yourself or let the theme fall back to the installed monospace
 fonts.
 
-Emoji are rendered through the system emoji font. The default theme prefers
-`Segoe UI Emoji` for emoji spans on every platform, including Linux. Windows
-usually provides it; Linux containers only get the same glyphs if the runtime
-provides that font. If Segoe UI Emoji is not available, the theme falls back to
-`Apple Color Emoji`, `Noto Emoji`, `Noto Color Emoji`, and other installed emoji
-fonts. Whether the final PDF keeps color emoji still depends on WeasyPrint,
-Pango/Cairo, and the PDF viewer.
-
-Optional fallback fonts:
-
-```shell
-sudo apt-get install -y --no-install-recommends fonts-noto-color-emoji fonts-stix
-fc-cache -f
-```
+Emoji are rendered through the system emoji font. On Linux, prefer monochrome
+`Noto Emoji` for stable PDF layout. `Noto Color Emoji` is easier to install from
+many distro package managers and is safe to use as a fallback, but color emoji
+often render too small or misaligned in WeasyPrint/Pango/Cairo/PDFium output.
 
 On Windows, install the native libraries separately. A common MSYS2 setup is:
 
@@ -378,6 +365,7 @@ MIT. Bundled KaTeX assets are also distributed under the MIT license; see
 
 `mdtopdf` does not bundle CJK body fonts, emoji fonts, or proprietary system
 fonts. The default theme references local system fonts such as Segoe UI,
-Microsoft YaHei, PingFang SC, Segoe UI Emoji, Noto Emoji, Noto Color Emoji,
-Cascadia Code, and Consolas, but those font files come from the user's operating
-system or runtime environment.
+Microsoft YaHei, PingFang SC, Segoe UI Emoji, Noto Sans CJK SC,
+Noto Emoji, Noto Color Emoji, Cascadia Code, and Consolas, but those font files come from
+the user's operating system or runtime environment. Public Linux images should
+prefer the open-font baseline above.

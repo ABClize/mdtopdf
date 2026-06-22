@@ -32,20 +32,19 @@ structured `warnings` entries in JSON results; they do not stop PDF generation.
 The default theme uses a PDFium-safe Latin-first body font stack. Latin fonts
 come before CJK fonts so ASCII digits, dates, versions, and page counters are
 not embedded into CJK font subsets that some Chrome/PDFium renderers display
-incorrectly. Chinese text still falls back to the CJK side of the stack, where
-Microsoft YaHei is the first preferred CJK font. If it is not installed, the
-CSS stack falls back to PingFang SC, Noto Sans SC / Noto Sans CJK SC /
-Source Han Sans SC, and other available CJK fonts. Code blocks prefer Cascadia
-Mono / Cascadia Code before Consolas and other monospace fallbacks. Emoji spans
-prefer Segoe UI Emoji on every platform, including Linux, then fall back to
-Apple Color Emoji, Noto Emoji, Noto Color Emoji, and other installed emoji
-fonts. Color rendering in PDFs depends on the WeasyPrint/Pango/Cairo stack and
-the PDF viewer.
+incorrectly. Chinese text still falls back to the CJK side of the stack. On
+Linux, the supported runtime baseline is Liberation/DejaVu for Latin text and
+digits, Noto Sans CJK SC for Chinese, Cascadia Mono / Cascadia Code where
+available for code blocks, and STIX for math fallback. Emoji spans prefer a
+monochrome emoji font such as Noto Emoji on Linux because color emoji fonts can
+render too small or misaligned in WeasyPrint/Pango/Cairo/PDFium output.
 
-These body, code, and emoji fonts are not bundled in the Python wheel. Linux
-containers should provide the preferred fonts themselves when they need closer
-Windows-like Chinese/code typography, or install usable open-font fallbacks such
-as fontconfig, Noto CJK, Liberation/DejaVu, and Cascadia Code where available.
+These body, code, and emoji fonts are not bundled in the Python wheel. Public
+Linux containers should install redistributable open fonts such as fontconfig,
+Noto CJK, Noto Emoji, Liberation, DejaVu, STIX, and Cascadia Code where
+available. Microsoft YaHei and Segoe UI Emoji may appear in CSS fallback lists
+for systems that already provide them, but they are not Linux dependencies and
+must not be bundled in the project, wheel, release artifacts, or public images.
 
 ## Markdown Support
 

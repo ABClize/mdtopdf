@@ -107,21 +107,22 @@ casually reorder `mdtopdf/themes/default.css` font stacks.
   ASCII digits, dates, versions, and page counters do not land in CJK font
   subsets that Chrome/PDFium can render invisibly.
 - Chinese text still falls back to CJK fonts. In the CJK fallback list,
-  `Microsoft YaHei` is the first preferred CJK font on every platform,
-  including Linux.
+  Linux should use redistributable open fonts such as `Noto Sans CJK SC`.
 - Code blocks prefer `Cascadia Mono` / `Cascadia Code`, then system monospace
   fallbacks.
-- Emoji spans prefer `Segoe UI Emoji`, then available emoji fallback fonts.
+- Emoji spans use system emoji fonts. Linux should prefer monochrome
+  `Noto Emoji`; `Noto Color Emoji` is a fallback because PDF viewers can render
+  color emoji too small or misaligned.
 - `mdtopdf` may reference proprietary system font names in CSS, but must not
   bundle, download, or redistribute Microsoft font files.
-- Linux environments that need closer Windows-like Chinese/code typography
-  should provide Microsoft YaHei and Cascadia Code in the runtime. Open-font
-  packages such as Noto CJK, Liberation, and DejaVu are supported fallbacks, not
-  visual replacements for the Windows baseline.
+- Public Linux environments should use the open-font baseline: Liberation or
+  DejaVu for Latin/digits, Noto CJK for Chinese, Cascadia where available for
+  code blocks, STIX for math, and monochrome Noto Emoji for emoji where
+  available.
 
 `doctor --json` must distinguish runtime support from visual parity. Missing
-preferred fonts should be recommendations unless glyph coverage is actually
-missing.
+Linux fonts should recommend installable open packages, not Microsoft YaHei or
+Segoe UI Emoji.
 
 ## Rendering Checks
 
