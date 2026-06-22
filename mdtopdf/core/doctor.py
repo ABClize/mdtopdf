@@ -4,6 +4,8 @@ import ctypes
 import importlib
 import os
 import platform
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -76,6 +78,8 @@ def run_doctor() -> dict[str, Any]:
     result["packages"]["latex2mathml"] = _check_python_package("latex2mathml")
     result["packages"]["matplotlib"] = _check_python_package("matplotlib")
     result["tools"]["mermaid"] = inspect_mermaid_backend()
+    if result["platform"]["system"] == "Linux":
+        result["tools"]["fontconfig"] = _inspect_fontconfig()
     result["ok"] = all(info["ok"] for info in result["packages"].values())
     result["recommendations"] = _recommendations(result)
     return result
@@ -211,8 +215,38 @@ def _inspect_fonts() -> dict[str, Any]:
     return inspect_recommended_font_groups()
 
 
+def _inspect_fontconfig() -> dict[str, Any]:
+    executable = shutil.which("fc-match")
+    result: dict[str, Any] = {
+        "ok": False,
+        "executable": executable,
+        "sample": None,
+        "error": None,
+    }
+    if not executable:
+        result["error"] = "fc-match was not found on PATH."
+        return result
+
+    try:
+        proc = subprocess.run(
+            [executable, "-f", "%{family}\n", "sans-serif"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except Exception as exc:
+        result["error"] = f"{type(exc).__name__}: {exc}"
+        return result
+
+    result["sample"] = proc.stdout.strip() or None
+    result["ok"] = True
+    return result
+
+
 def _recommendations(result: dict[str, Any]) -> list[str]:
     recommendations: list[str] = []
+    is_linux = result.get("platform", {}).get("system") == "Linux"
     package_info = result.get("packages", {}).get("weasyprint", {})
     if not package_info.get("ok"):
         recommendations.append("Install Python dependencies with: python -m pip install agent-markdown-pdf")
@@ -232,19 +266,48 @@ def _recommendations(result: dict[str, Any]) -> list[str]:
             "Optional: install Mermaid rendering support with Node.js plus: "
             "npm install -g @mermaid-js/mermaid-cli"
         )
+    fontconfig_info = result.get("tools", {}).get("fontconfig")
+    if is_linux and fontconfig_info and not fontconfig_info.get("ok"):
+        recommendations.append(
+            "Install fontconfig so WeasyPrint/Pango can resolve system fonts, for example: "
+            "sudo apt-get install fontconfig"
+        )
 
     font_info = result.get("fonts", {})
     font_groups = font_info.get("groups", {})
     if font_info.get("error"):
         recommendations.append("Font inspection failed; run conversion once and verify CJK text visually.")
+    if font_groups.get("latin_sans") and not font_groups["latin_sans"].get("ok"):
+        recommendations.append(
+            "Install a Latin sans font so digits, dates, versions, and page counters avoid CJK font subsets. "
+            "On Debian or Ubuntu, use: sudo apt-get install fonts-liberation fonts-dejavu-core"
+        )
     if font_groups.get("cjk_sans") and not font_groups["cjk_sans"].get("ok"):
         recommendations.append(
-            "Install Microsoft YaHei when you want the default theme to match its first-choice CJK font. "
-            "On Debian or Ubuntu, Noto CJK is a practical fallback: sudo apt-get install fonts-noto-cjk"
+            "Provide Microsoft YaHei in the runtime to match the default theme's Windows-like Chinese typography. "
+            "On Debian or Ubuntu, Noto CJK is a supported fallback: sudo apt-get install fonts-noto-cjk"
+        )
+    elif is_linux and font_groups.get("cjk_sans") and "Microsoft YaHei" in font_groups["cjk_sans"].get("missing", []):
+        recommendations.append(
+            "Optional: provide Microsoft YaHei in the Linux runtime to match the default theme's Windows-like "
+            "Chinese typography. Without it, output falls back to installed CJK fonts such as Noto CJK."
         )
     if font_groups.get("monospace") and not font_groups["monospace"].get("ok"):
         recommendations.append(
-            "Optional: install a monospace font such as Cascadia Code or Liberation Mono for stable code blocks."
+            "Install a monospace font for code blocks. On Debian or Ubuntu, use: "
+            "sudo apt-get install fonts-cascadia-code if that package is available; "
+            "otherwise provide Cascadia Code in the runtime."
+        )
+    elif (
+        is_linux
+        and font_groups.get("monospace")
+        and "Cascadia Mono" in font_groups["monospace"].get("missing", [])
+        and "Cascadia Code" in font_groups["monospace"].get("missing", [])
+    ):
+        recommendations.append(
+            "Optional: install Cascadia Code on Linux for default-theme code blocks: "
+            "sudo apt-get install fonts-cascadia-code if that package is available, "
+            "or provide Cascadia Code in the runtime."
         )
     if font_groups.get("math") and not font_groups["math"].get("ok"):
         recommendations.append(

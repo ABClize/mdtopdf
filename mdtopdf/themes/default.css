@@ -5,7 +5,7 @@
 
 :root {
   color: #172033;
-  font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "Segoe UI", "Segoe UI Emoji", Arial, "Apple Color Emoji", "Noto Emoji", "Noto Color Emoji", sans-serif;
+  font-family: "Segoe UI", Arial, "Liberation Sans", "DejaVu Sans", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", sans-serif;
   font-size: 11.5pt;
   line-height: 1.55;
 }
@@ -497,7 +497,7 @@ table.math-array .math-inline {
 .mathlabel {
   color: #1474b4;
   float: right;
-  font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "Segoe UI", Arial, sans-serif;
+  font-family: "Segoe UI", Arial, "Liberation Sans", "DejaVu Sans", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", sans-serif;
   font-size: 0.85em;
 }
 
@@ -586,7 +586,7 @@ blockquote.callout .callout-title::before {
   color: #ffffff;
   content: "i";
   display: inline-block;
-  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Noto Sans CJK SC", "Segoe UI", Arial, sans-serif;
+  font-family: "Segoe UI", Arial, "Liberation Sans", "DejaVu Sans", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
   font-size: 0.78em;
   font-weight: 800;
   height: 1.34em;

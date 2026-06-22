@@ -635,6 +635,7 @@ def test_prepare_mermaid_svg_rewrites_foreign_object_labels():
 
     assert "<foreignObject" not in prepared
     assert "<text" in prepared
+    assert 'font-family="Segoe UI, Arial, Liberation Sans, DejaVu Sans' in prepared
     assert "Node A" in prepared
 
 
@@ -780,7 +781,8 @@ def test_theme_loading():
 
     assert "@page" in css
     assert "A4" in css
-    assert '"Microsoft YaHei", "PingFang SC", "Hiragino Sans GB"' in css
+    assert '"Segoe UI", Arial, "Liberation Sans", "DejaVu Sans"' in css
+    assert css.index('"Segoe UI", Arial') < css.index('"Microsoft YaHei"')
     assert ".mdtopdf-emoji {" in css
     emoji_block = css.rsplit(".mdtopdf-emoji {", 1)[1].split("}", 1)[0]
     assert emoji_block.index('"Segoe UI Emoji"') < emoji_block.index('"Noto Color Emoji"')
@@ -971,6 +973,7 @@ def test_page_header_footer_can_be_disabled_or_overridden():
     assert "@bottom-center" not in disabled.css
     assert 'content: "Quoted \\"Title\\"";' in custom.css
     assert 'content: "Draft";' in custom.css
+    assert 'font-family: "Segoe UI", Arial, "Liberation Sans", "DejaVu Sans"' in custom.css
     assert "counter(page)" not in custom.css
 
 
@@ -1171,6 +1174,7 @@ def test_doctor_json_shape():
     assert "tools" in result
     assert "mermaid" in result["tools"]
     assert "fonts" in result
+    assert "latin_sans" in result["fonts"]["groups"]
     assert "cjk_sans" in result["fonts"]["groups"]
     assert "recommendations" in result
 
@@ -1179,7 +1183,7 @@ def test_doctor_font_groups_match_default_theme_font_fallbacks(monkeypatch):
     monkeypatch.setattr(
         fonts_core,
         "available_font_names",
-        lambda: {"Microsoft YaHei", "Consolas", "Cambria Math", "Segoe UI Emoji"},
+        lambda: {"Arial", "Microsoft YaHei", "Consolas", "Cambria Math", "Segoe UI Emoji"},
     )
     monkeypatch.setattr(
         fonts_core,
@@ -1190,10 +1194,119 @@ def test_doctor_font_groups_match_default_theme_font_fallbacks(monkeypatch):
     result = doctor._inspect_fonts()
 
     assert result["ok"] is True
+    assert result["groups"]["latin_sans"]["found"] == ["Arial"]
+    assert result["groups"]["latin_sans"]["preferred_found"] is True
     assert result["groups"]["cjk_sans"]["found"] == ["Microsoft YaHei"]
+    assert result["groups"]["cjk_sans"]["preferred"] == ["Microsoft YaHei"]
+    assert result["groups"]["cjk_sans"]["preferred_found"] is True
     assert result["groups"]["monospace"]["found"] == ["Consolas"]
+    assert result["groups"]["monospace"]["preferred"] == ["Cascadia Mono", "Cascadia Code"]
+    assert result["groups"]["monospace"]["preferred_found"] is False
     assert result["groups"]["math"]["found"] == ["Cambria Math"]
     assert result["groups"]["emoji"]["found"] == ["Segoe UI Emoji"]
+
+
+def test_doctor_linux_recommends_windows_like_preferred_fonts():
+    result = {
+        "ok": True,
+        "platform": {"system": "Linux"},
+        "packages": {
+            "weasyprint": {"ok": True},
+            "mini-racer": {"ok": True},
+            "latex2mathml": {"ok": True},
+            "matplotlib": {"ok": True},
+        },
+        "tools": {
+            "mermaid": {"ok": True},
+            "fontconfig": {"ok": True},
+        },
+        "fonts": {
+            "groups": {
+                "cjk_sans": {
+                    "ok": True,
+                    "found": ["Noto Sans CJK SC"],
+                    "missing": ["Microsoft YaHei"],
+                },
+                "latin_sans": {
+                    "ok": True,
+                    "found": ["Liberation Sans"],
+                    "missing": ["Segoe UI", "Arial", "DejaVu Sans"],
+                },
+                "monospace": {
+                    "ok": True,
+                    "found": ["Liberation Mono"],
+                    "missing": ["Cascadia Mono", "Cascadia Code"],
+                },
+                "math": {"ok": True, "found": ["STIXGeneral"], "missing": ["Cambria Math"]},
+                "emoji": {"ok": True, "found": ["Noto Color Emoji"], "missing": ["Segoe UI Emoji"]},
+            }
+        },
+    }
+
+    recommendations = doctor._recommendations(result)
+
+    assert any("Microsoft YaHei" in item and "Windows-like" in item for item in recommendations)
+    assert any("Cascadia Code" in item and "code blocks" in item for item in recommendations)
+
+
+def test_doctor_linux_recommends_fontconfig_when_missing():
+    result = {
+        "ok": True,
+        "platform": {"system": "Linux"},
+        "packages": {
+            "weasyprint": {"ok": True},
+            "mini-racer": {"ok": True},
+            "latex2mathml": {"ok": True},
+            "matplotlib": {"ok": True},
+        },
+        "tools": {
+            "mermaid": {"ok": True},
+            "fontconfig": {"ok": False, "error": "fc-match was not found on PATH."},
+        },
+        "fonts": {
+            "groups": {
+                "cjk_sans": {"ok": True, "found": ["Microsoft YaHei"], "missing": []},
+                "latin_sans": {"ok": True, "found": ["Arial"], "missing": []},
+                "monospace": {"ok": True, "found": ["Cascadia Code"], "missing": []},
+                "math": {"ok": True, "found": ["Cambria Math"], "missing": []},
+                "emoji": {"ok": True, "found": ["Segoe UI Emoji"], "missing": []},
+            }
+        },
+    }
+
+    recommendations = doctor._recommendations(result)
+
+    assert any("fontconfig" in item for item in recommendations)
+
+
+def test_doctor_recommends_latin_fonts_when_missing():
+    result = {
+        "ok": True,
+        "platform": {"system": "Linux"},
+        "packages": {
+            "weasyprint": {"ok": True},
+            "mini-racer": {"ok": True},
+            "latex2mathml": {"ok": True},
+            "matplotlib": {"ok": True},
+        },
+        "tools": {
+            "mermaid": {"ok": True},
+            "fontconfig": {"ok": True},
+        },
+        "fonts": {
+            "groups": {
+                "latin_sans": {"ok": False, "found": [], "missing": ["Segoe UI", "Arial", "Liberation Sans"]},
+                "cjk_sans": {"ok": True, "found": ["Noto Sans CJK SC"], "missing": ["Microsoft YaHei"]},
+                "monospace": {"ok": True, "found": ["Liberation Mono"], "missing": ["Cascadia Code"]},
+                "math": {"ok": True, "found": ["STIXGeneral"], "missing": ["Cambria Math"]},
+                "emoji": {"ok": True, "found": ["Noto Color Emoji"], "missing": ["Segoe UI Emoji"]},
+            }
+        },
+    }
+
+    recommendations = doctor._recommendations(result)
+
+    assert any("Latin sans" in item and "digits" in item for item in recommendations)
 
 
 def test_doctor_reports_missing_mini_racer(monkeypatch):
