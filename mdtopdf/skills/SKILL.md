@@ -75,15 +75,19 @@ apt-get install -y --no-install-recommends \
   shared-mime-info \
   fonts-liberation \
   fonts-dejavu-core \
-  fonts-noto-cjk
+  fonts-noto-cjk \
+  fonts-stix
 fc-cache -f
 ```
+
+For emoji-heavy documents on Linux, prefer a monochrome emoji font such as
+Noto Emoji. `fonts-noto-color-emoji` is a fallback, but it can render too small
+or misaligned in PDF viewers.
 
 Install optional support only when needed:
 
 ```shell
 npm install -g @mermaid-js/mermaid-cli
-apt-get install -y --no-install-recommends fonts-stix fonts-noto-color-emoji
 ```
 
 Use Cascadia Code for closer default code-block styling when available:
