@@ -154,10 +154,15 @@ PDF theme.
 
 ## Browser Installation
 
-Install the Python package, then explicitly run
-`python -m playwright install chromium --no-shell`. For an existing recent
-Chrome/Edge, set `MDTOPDF_BROWSER_EXECUTABLE`. The legacy
-`PUPPETEER_EXECUTABLE_PATH` remains a fallback. Linux system dependencies can
+Browser inspection and rendering share one resolver: explicit
+`MDTOPDF_BROWSER_EXECUTABLE`, legacy `PUPPETEER_EXECUTABLE_PATH`, installed
+Playwright Chromium, then system browser paths. Invalid explicit paths fail;
+there is no download or retry with a different browser on launch failure.
+If none is found, explicitly run `python -m playwright install chromium --no-shell`.
+The CLI's `convert -` reads UTF-8 stdin and calls the existing text-to-PDF API;
+it requires an output file and resolves relative resources from the working
+directory or `--base-url`. No temporary Markdown file is created.
+Linux system dependencies can
 be prepared with `python -m playwright install-deps chromium`.
 Browser/driver versions should be pinned by the deployment when reproducibility
 is required. Old WeasyPrint-specific custom CSS may require adjustment: the

@@ -11,11 +11,13 @@ Install package `agent-markdown-pdf`; the command and Python import are `mdtopdf
 
 ```shell
 python -m pip install -U agent-markdown-pdf
-python -m playwright install chromium --no-shell
 mdtopdf doctor --render-check --json
 ```
 
-An existing recent Chrome/Edge can be selected with `MDTOPDF_BROWSER_EXECUTABLE`.
+Browser selection: `MDTOPDF_BROWSER_EXECUTABLE`, legacy `PUPPETEER_EXECUTABLE_PATH`,
+installed Playwright Chromium, then system Chrome/Edge/Chromium. Invalid explicit
+paths fail without fallback. If none is found, install with
+`python -m playwright install chromium --no-shell` during setup.
 Linux may also need `python -m playwright install-deps chromium`. Run as a
 non-root user with browser sandbox support. Do not disable the sandbox or
 install browsers during conversion retries.
@@ -31,6 +33,12 @@ WeasyPrint installation is needed.
 ```shell
 mdtopdf convert INPUT.md -o OUTPUT.pdf --json
 ```
+
+For piped UTF-8 Markdown, use `mdtopdf convert - -o OUTPUT.pdf --json`.
+Output is required; relative assets use the working directory or `--base-url`.
+Use `--title` to replace the default `stdin` title/header. Empty input fails.
+In Windows PowerShell 5.1, set `$OutputEncoding = [System.Text.UTF8Encoding]::new($false)`
+before piping non-ASCII text. The `html` command still takes a file path.
 
 Add `--overwrite` only when replacing the output is intended. It also allows
 input and output to be the same file. Read `warnings` even when `ok` is true.

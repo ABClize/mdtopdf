@@ -76,8 +76,10 @@ the command runs inside the repository root. Do not delete unrelated user files.
 ## Runtime Dependencies
 
 Chromium is the only rendering engine, controlled by Python Playwright.
-Install it explicitly with `python -m playwright install chromium --no-shell`,
-or set `MDTOPDF_BROWSER_EXECUTABLE` to an existing recent Chrome/Edge.
+Resolution order: `MDTOPDF_BROWSER_EXECUTABLE`, legacy `PUPPETEER_EXECUTABLE_PATH`,
+installed Playwright Chromium, then system Chrome/Edge/Chromium. Invalid explicit
+paths must fail rather than fall back. Doctor and rendering use the same resolver.
+Install with `python -m playwright install chromium --no-shell` only if needed.
 Linux may need `python -m playwright install-deps chromium`.
 There is no separate Node.js, Mermaid CLI, MiniRacer, or WeasyPrint requirement.
 
@@ -146,4 +148,6 @@ visual rendering through Chrome/PDFium or `pypdfium2`, especially for:
   not replace existing output; without overwrite, existing files remain protected.
 - Add regression tests for fixes and include JSON usage errors, material render
   warnings, nested code blocks, and platform-independent resource resolution.
+- `convert -` reads UTF-8 stdin, requires a PDF output path, and uses the working
+  directory or `--base-url` for resources. Keep the existing file-input behavior.
 - Use `apply_patch` for manual edits.

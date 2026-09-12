@@ -668,9 +668,11 @@ def test_theme_loading():
     assert "tab-size: 2;" in css
     assert "padding: 0.78em 0.88em 0.82em;" in css
     assert "pre::before {" in css
-    assert "radial-gradient(circle at 4px 4px, #ff5f56" in css
-    assert "radial-gradient(circle at 16px 4px, #ffbd2e" in css
-    assert "radial-gradient(circle at 28px 4px, #27c93f" in css
+    dots_block = css.split("pre::before {", 1)[1].split("}", 1)[0]
+    assert "data:image/svg+xml," in dots_block
+    assert "radial-gradient" not in dots_block
+    for color in ("ff5f56", "ffbd2e", "27c93f"):
+        assert f"fill='%23{color}'" in dots_block
     assert "width: 32px;" in css
     assert "border-radius: 8px;" in css
     assert "max-height: 230mm;" in css
@@ -746,7 +748,8 @@ def test_default_theme_has_single_style_layer():
 def test_theme_styles_obsidian_callouts_as_document_components():
     css = load_theme_css(DEFAULT_THEME)
     regular_quote_block = css.rsplit("blockquote {", 1)[1].split("}", 1)[0]
-    callout_block = css.rsplit("blockquote.callout {", 1)[1].split("}", 1)[0]
+    callout_block = css.split("blockquote.callout {", 1)[1].split("}", 1)[0]
+    icon_block = css.split("blockquote.callout .callout-title::before {", 1)[1].split("}", 1)[0]
 
     assert (
         "background: linear-gradient(90deg, #d97706 0, #d97706 4px, "
@@ -756,41 +759,42 @@ def test_theme_styles_obsidian_callouts_as_document_components():
     assert "border-radius: 8px;" in regular_quote_block
     assert "padding: 0.58em 0.82em 0.58em 1.05em;" in regular_quote_block
     assert "blockquote.callout {" in css
-    assert (
-        "background: linear-gradient(90deg, #0f6ea7 0, #0f6ea7 5px, "
-        "#f5f9fd 5px, #f5f9fd 100%);"
-    ) in callout_block
+    assert "background: #f5f9fd;" in callout_block
+    assert "border-left: 5px solid #0f6ea7;" in callout_block
     assert "border: 1px solid #d6e3ef;" in callout_block
     assert "border-radius: 8px;" in callout_block
     assert "box-shadow: 0 4px 12px rgba(15, 42, 67, 0.05);" in css
-    assert "padding: 0.58em 0.82em 0.68em 1.2em;" in css
+    assert "padding: 0.58em 0.82em 0.68em calc(1.2em - 4px);" in css
     assert "blockquote.callout p {\n  margin: 0.24em 0 0;\n}" in css
     assert "border-bottom: 1px solid #c9dff2;" in css
     assert "blockquote.callout .callout-title {" in css
     assert "blockquote.callout .callout-title::before {" in css
-    assert "border-radius: 50%;" in css
-    assert 'content: "i";' in css
+    assert 'content: "";' in icon_block
+    assert "data:image/svg+xml," in icon_block
+    assert "font-family:" not in icon_block
     assert "height: 1.34em;" in css
     assert "width: 1.34em;" in css
     assert ".callout.callout-tip,\n.callout.callout-success,\n.callout.callout-done,\n.callout.callout-check {" in css
-    assert "linear-gradient(90deg, #15803d 0, #15803d 5px, #f3fbf6 5px, #f3fbf6 100%);" in css
+    assert "background: #f3fbf6;" in css
+    assert "border-left-color: #15803d;" in css
     assert ".callout.callout-tip .callout-title,\n.callout.callout-success .callout-title" in css
-    assert 'content: "+";' in css
     assert ".callout.callout-warning,\n.callout.callout-caution,\n.callout.callout-attention {" in css
-    assert "linear-gradient(90deg, #b45309 0, #b45309 5px, #fff8ed 5px, #fff8ed 100%);" in css
+    assert "background: #fff8ed;" in css
+    assert "border-left-color: #b45309;" in css
     assert ".callout.callout-warning .callout-title,\n.callout.callout-caution .callout-title" in css
-    assert 'content: "!";' in css
     assert (
         ".callout.callout-danger,\n.callout.callout-error,\n.callout.callout-fail,\n"
         ".callout.callout-failure,\n.callout.callout-missing {"
     ) in css
-    assert "linear-gradient(90deg, #b91c1c 0, #b91c1c 5px, #fff5f5 5px, #fff5f5 100%);" in css
+    assert "background: #fff5f5;" in css
+    assert "border-left-color: #b91c1c;" in css
     assert ".callout.callout-question,\n.callout.callout-help,\n.callout.callout-faq {" in css
-    assert "linear-gradient(90deg, #6b4fc4 0, #6b4fc4 5px, #f7f5ff 5px, #f7f5ff 100%);" in css
-    assert 'content: "?";' in css
+    assert "background: #f7f5ff;" in css
+    assert "border-left-color: #6b4fc4;" in css
     assert ".callout.callout-quote {" in css
-    assert "linear-gradient(90deg, #777b82 0, #777b82 5px, #f8f8f6 5px, #f8f8f6 100%);" in css
-    assert 'content: "\\"";' in css
+    assert "background: #f8f8f6;" in css
+    assert "border-left-color: #777b82;" in css
+    assert "@media print {\n  pre,\n  blockquote.callout {\n    box-shadow: none;" in css
 
 
 def test_available_themes_only_lists_default():

@@ -8,9 +8,10 @@ from typing import Any
 import click
 
 from mdtopdf import __version__
+from mdtopdf.api import markdown_to_pdf
 from mdtopdf.core.doctor import format_doctor_text, run_doctor
 from mdtopdf.core.html import convert_markdown_file_to_html
-from mdtopdf.core.markdown import DEFAULT_THEME, available_themes
+from mdtopdf.core.markdown import DEFAULT_THEME, available_themes, load_custom_css
 from mdtopdf.core.pdf import convert_markdown_file
 
 
@@ -93,6 +94,20 @@ def _emit_warnings(data: dict[str, Any]) -> None:
         click.secho(f"Warning: {message}{suffix}", fg="yellow", err=True)
 
 
+def _read_stdin_markdown() -> str:
+    stream = sys.stdin
+    if stream.isatty():
+        raise ValueError("Pipe UTF-8 Markdown to stdin or provide an input file.")
+    try:
+        data = getattr(stream, "buffer", stream).read()
+        text = data.decode("utf-8-sig") if isinstance(data, bytes) else data.removeprefix("\ufeff")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Standard input must contain UTF-8 Markdown.") from exc
+    if not text.strip():
+        raise ValueError("Standard input contains no Markdown.")
+    return text
+
+
 @click.group(cls=JsonGroup, context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(version=__version__, prog_name="mdtopdf")
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
@@ -105,7 +120,7 @@ def cli(ctx: click.Context, json_output: bool) -> None:
 
 
 @cli.command()
-@click.argument("input_md", type=click.Path(dir_okay=False, path_type=Path))
+@click.argument("input_md", type=click.Path(dir_okay=False))
 @click.option("-o", "--output", "output_pdf", type=click.Path(dir_okay=False, path_type=Path), help="Output PDF path.")
 @click.option("--theme", default=DEFAULT_THEME, show_default=True, help="Built-in theme name.")
 @click.option("--css", "custom_css", type=click.Path(dir_okay=False, path_type=Path), help="Append custom CSS after the theme.")
@@ -128,7 +143,7 @@ def cli(ctx: click.Context, json_output: bool) -> None:
 @click.pass_context
 def convert(
     ctx: click.Context,
-    input_md: Path,
+    input_md: str,
     output_pdf: Path | None,
     theme: str,
     custom_css: Path | None,
@@ -145,14 +160,13 @@ def convert(
     unsafe_html: bool,
     json_output: bool,
 ) -> None:
-    """Convert INPUT.md to PDF."""
+    """Convert INPUT.md to PDF. Use - to read UTF-8 Markdown from stdin."""
 
+    if input_md == "-" and (output_pdf is None or output_pdf == Path("-")):
+        raise click.UsageError("Standard input requires an output file: -o OUTPUT.pdf (not '-').")
     try:
-        result = convert_markdown_file(
-            input_md,
-            output_path=output_pdf,
+        options = dict(
             theme=theme,
-            custom_css_path=custom_css,
             title=title,
             base_url=base_url,
             resource_dir=resource_dir,
@@ -165,6 +179,22 @@ def convert(
             include_page_footer=not no_footer,
             page_numbers=not no_page_numbers,
         )
+        if input_md == "-":
+            output = output_pdf.expanduser()
+            if output.exists() and not overwrite:
+                raise FileExistsError(f"Output PDF already exists: {output}. Use --overwrite to replace it.")
+            options["base_url"] = base_url if base_url is not None else str(Path.cwd())
+            options["title"] = title or "stdin"
+            result = markdown_to_pdf(
+                _read_stdin_markdown(), output,
+                custom_css=load_custom_css(str(custom_css)) if custom_css else None,
+                **options,
+            )
+            result.update(input="-", source="stdin")
+        else:
+            result = convert_markdown_file(
+                input_md, output_path=output_pdf, custom_css_path=custom_css, **options,
+            )
     except Exception as exc:
         if _json_enabled(ctx, json_output):
             _emit_json(_error_result(exc))
