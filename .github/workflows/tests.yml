@@ -60,7 +60,7 @@ jobs:
         run: python -m pytest tests/ -q --basetemp test-output
       - name: Upload visual test evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: render-checks-${{ matrix.os }}-${{ matrix.python-version }}
           path: |
@@ -84,11 +84,22 @@ jobs:
           python -m pip install build twine
           python -m build
           python -m twine check dist/*
+      - name: Upload checked distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: checked-distributions
+          path: dist/
+          if-no-files-found: error
+      - name: Download checked distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: checked-distributions
+          path: ${{ runner.temp }}/checked-distributions
       - name: Install the wheel into a clean environment
         shell: bash
         run: |
           python -m venv "$RUNNER_TEMP/wheel-env"
-          "$RUNNER_TEMP/wheel-env/bin/python" -m pip install dist/*.whl
+          "$RUNNER_TEMP/wheel-env/bin/python" -m pip install "$RUNNER_TEMP/checked-distributions/"*.whl
       - name: Exercise installed wheel outside the checkout
         shell: bash
         run: |
