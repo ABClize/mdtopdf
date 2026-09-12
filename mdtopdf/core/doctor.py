@@ -1,406 +1,144 @@
+"""Diagnose the installed browser, bundled renderers, and document fonts."""
 from __future__ import annotations
 
-import ctypes
 import importlib
+from importlib import metadata, resources
 import os
 import platform
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
-from typing import Any
 
+from mdtopdf.core.browser import BROWSER_ENV, inspect_browser
 from mdtopdf.core.fonts import inspect_recommended_font_groups
-from mdtopdf.core.mermaid import inspect_mermaid_backend
 
 
-WINDOWS_DLL_ENV = "WEASYPRINT_DLL_DIRECTORIES"
-REQUIRED_WINDOWS_DLLS = (
-    "libgobject-2.0-0.dll",
-    "libpango-1.0-0.dll",
-    "libcairo-2.dll",
-)
-COMMON_WINDOWS_DLL_DIRS = (
-    r"C:\msys64\mingw64\bin",
-    r"D:\Environment\msys64\mingw64\bin",
-)
-def add_weasyprint_dll_directories() -> list[str]:
-    """Register Windows DLL search directories from ``WEASYPRINT_DLL_DIRECTORIES``."""
-
-    if os.name != "nt":
-        return []
-
-    added: list[str] = []
-    for raw_path in _env_dll_directories():
-        path = Path(raw_path)
-        if path.exists() and path.is_dir():
-            os.add_dll_directory(str(path))
-            added.append(str(path))
-    return added
-
-
-def run_doctor(*, render_check: bool = False) -> dict[str, Any]:
-    """Inspect Python packages, optional Mermaid support, and native libraries.
-
-    Returns:
-        A JSON-serializable dictionary with platform details, Python package
-        import status, Mermaid backend status, Windows native library probes,
-        and repair recommendations. The top-level ``ok`` value is true when all
-        required Python packages are available; Mermaid is optional and only
-        renders when local ``mmdc`` is installed.
-    """
-
-    add_weasyprint_dll_directories()
-
-    platform_system = platform.system()
-    result: dict[str, Any] = {
+def run_doctor(*, render_check=False):
+    system = platform.system()
+    result = {
         "ok": False,
-        "platform": {
-            "system": platform_system,
-            "release": platform.release(),
-            "machine": platform.machine(),
-        },
-        "python": {
-            "executable": sys.executable,
-            "version": platform.python_version(),
-        },
-        "environment": {
-            WINDOWS_DLL_ENV: os.environ.get(WINDOWS_DLL_ENV),
-        },
-        "packages": {},
-        "tools": {},
-        "native_libraries": _inspect_native_libraries(),
-        "fonts": _inspect_fonts(platform_system),
+        "platform": {"system": system, "release": platform.release(), "machine": platform.machine()},
+        "python": {"executable": sys.executable, "version": platform.python_version()},
+        "environment": {name: os.environ.get(name) for name in (
+            BROWSER_ENV, "PUPPETEER_EXECUTABLE_PATH", "PLAYWRIGHT_BROWSERS_PATH",
+        )},
+        "packages": {"playwright": _check_python_package("playwright")},
+        "tools": {"browser": inspect_browser()},
+        "native_libraries": [],
+        "fonts": _inspect_fonts(system),
         "recommendations": [],
     }
-
-    result["packages"]["weasyprint"] = _check_python_package("weasyprint")
-    result["packages"]["mini-racer"] = _check_python_package("py_mini_racer")
-    result["packages"]["latex2mathml"] = _check_python_package("latex2mathml")
-    result["packages"]["matplotlib"] = _check_python_package("matplotlib")
-    result["tools"]["mermaid"] = inspect_mermaid_backend()
-    if result["platform"]["system"] == "Linux":
+    root = resources.files("mdtopdf")
+    for name, path in (("mermaid", "vendor/mermaid/mermaid.min.js"), ("katex", "vendor/katex/dist/katex.min.js")):
+        exists = root.joinpath(path).is_file()
+        result["tools"][name] = {"ok": exists, "backend": "bundled-javascript", "optional": False,
+                                 "requires_network": False, "error": None if exists else "Bundled asset is missing."}
+    if system == "Linux":
         result["tools"]["fontconfig"] = _inspect_fontconfig()
-    result["ok"] = all(info["ok"] for info in result["packages"].values())
+    result["ok"] = all(info["ok"] for info in result["packages"].values()) and all(
+        result["tools"][name]["ok"] for name in ("browser", "mermaid", "katex")
+    )
     if render_check:
-        result["render_checks"] = _run_render_checks(result["tools"]["mermaid"].get("ok", False))
-        result["ok"] = result["ok"] and all(
-            check.get("ok") or check.get("skipped") for check in result["render_checks"].values()
-        )
+        result["render_checks"] = _run_render_checks()
+        result["ok"] = result["ok"] and all(check["ok"] for check in result["render_checks"].values())
     result["recommendations"] = _recommendations(result)
     return result
 
 
-def _run_render_checks(mermaid_available):
-    from mdtopdf.core.diagnostics import collect_warnings
+def _run_render_checks():
+    from mdtopdf.core.browser import render_document
     from mdtopdf.core.markdown import render_markdown_to_html
-    from mdtopdf.core.mermaid import render_mermaid_to_svg
-
-    checks = {}
     try:
-        from weasyprint import HTML
-
-        rendered = render_markdown_to_html("# Render check\n\n0123456789 v0.2.2 IT-001\n\n$x^2 + 1$")
-        with collect_warnings(render_logs=True) as warnings:
-            pdf = HTML(string=rendered.html).write_pdf()
-        warnings = [*rendered.warnings, *warnings]
-        checks["pdf"] = {
-            "ok": pdf.startswith(b"%PDF-") and not warnings, "file_size": len(pdf), "warnings": warnings,
-        }
-    except Exception as exc:
-        checks["pdf"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-    if mermaid_available:
-        try:
-            svg = render_mermaid_to_svg("graph TD; A-->B")
-            checks["mermaid"] = {"ok": "<svg" in svg}
-        except Exception as exc:
-            checks["mermaid"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-    else:
-        checks["mermaid"] = {"ok": False, "skipped": True, "reason": "Optional Mermaid CLI is not installed."}
-    return checks
-
-
-def format_doctor_text(result: dict[str, Any]) -> str:
-    status = "OK" if result.get("ok") else "NEEDS ATTENTION"
-    lines = [
-        f"mdtopdf doctor: {status}",
-        f"Python: {result['python']['version']} ({result['python']['executable']})",
-        f"Platform: {result['platform']['system']} {result['platform']['release']} {result['platform']['machine']}",
-        f"{WINDOWS_DLL_ENV}: {result['environment'].get(WINDOWS_DLL_ENV) or '(not set)'}",
-        "",
-        "Python packages:",
-    ]
-
-    for name, info in result.get("packages", {}).items():
-        version = f" {info.get('version')}" if info.get("version") else ""
-        error = f" - {info.get('error')}" if info.get("error") else ""
-        lines.append(f"  - {name}: {'OK' if info.get('ok') else 'FAIL'}{version}{error}")
-
-    if result.get("tools"):
-        lines.extend(["", "External tools:"])
-        for name, info in result["tools"].items():
-            backend = f" via {info.get('backend')}" if info.get("backend") else ""
-            executable = f" ({info.get('executable')})" if info.get("executable") else ""
-            error = f" - {info.get('error')}" if info.get("error") else ""
-            lines.append(f"  - {name}: {'OK' if info.get('ok') else 'MISSING'}{backend}{executable}{error}")
-
-    if result.get("native_libraries"):
-        lines.extend(["", "Native library probes:"])
-        for probe in result["native_libraries"]:
-            lines.append(
-                f"  - {probe['directory']}: "
-                f"{'OK' if probe['all_found'] else 'MISSING'} "
-                f"found={', '.join(probe['found']) or '(none)'} "
-                f"missing={', '.join(probe['missing']) or '(none)'}"
-            )
-
-    if result.get("fonts"):
-        lines.extend(["", "Fonts:"])
-        font_error = result["fonts"].get("error")
-        if font_error:
-            lines.append(f"  - font inspection: FAIL - {font_error}")
-        for name, info in result["fonts"].get("groups", {}).items():
-            found = ", ".join(info.get("found", [])) or "(none)"
-            recommended = ", ".join(info.get("recommended", []))
-            lines.append(
-                f"  - {name}: {'OK' if info.get('ok') else 'MISSING'} "
-                f"found={found} recommended={recommended}"
-            )
-
-    if result.get("render_checks"):
-        lines.extend(["", "Render checks:"])
-        for name, check in result["render_checks"].items():
-            status = "SKIPPED" if check.get("skipped") else ("OK" if check.get("ok") else "FAIL")
-            lines.append(f"  - {name}: {status} {check.get('error', check.get('reason', ''))}".rstrip())
-
-    if result.get("recommendations"):
-        lines.extend(["", "Recommendations:"])
-        for item in result["recommendations"]:
-            lines.append(f"  - {item}")
-
-    return "\n".join(lines)
-
-
-def _check_python_package(name: str) -> dict[str, Any]:
-    try:
-        module = importlib.import_module(name)
-    except Exception as exc:
-        return {
-            "ok": False,
-            "version": None,
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-
-    return {
-        "ok": True,
-        "version": getattr(module, "__version__", None),
-        "error": None,
-    }
-
-
-def _inspect_native_libraries() -> list[dict[str, Any]]:
-    if os.name != "nt":
-        return []
-
-    probes: list[dict[str, Any]] = []
-    for directory in _candidate_windows_dll_dirs():
-        path = Path(directory)
-        found = [dll for dll in REQUIRED_WINDOWS_DLLS if (path / dll).exists()]
-        missing = [dll for dll in REQUIRED_WINDOWS_DLLS if dll not in found]
-        loadable = _loadable_dlls(path, found)
-        probes.append(
-            {
-                "directory": str(path),
-                "exists": path.exists(),
-                "found": found,
-                "missing": missing,
-                "loadable": loadable,
-                "all_found": bool(found) and not missing,
-            }
+        rendered = render_markdown_to_html(
+            "# Render check\n\n0123456789 v0.2.2 IT-001\n\n$x^2+1$\n\n```mermaid\ngraph TD; A-->B\n```",
+            _defer_browser=True,
         )
-    return probes
+        with tempfile.TemporaryDirectory(prefix="mdtopdf-doctor-") as directory:
+            path = Path(directory) / "probe.pdf"
+            probe = render_document(rendered.html, output_path=path)
+            return {
+                "pdf": {"ok": path.read_bytes().startswith(b"%PDF-") and not probe.warnings,
+                        "file_size": path.stat().st_size, "warnings": probe.warnings, "browser_version": probe.version},
+                "mermaid": {"ok": "<svg" in probe.body},
+                "katex": {"ok": "katex-html" in probe.body},
+            }
+    except Exception as exc:
+        failure = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        for field in ("error_code", "hint"):
+            if getattr(exc, field, None):
+                failure[field] = getattr(exc, field)
+        return {"pdf": failure}
 
 
-def _loadable_dlls(directory: Path, dll_names: list[str]) -> dict[str, bool]:
-    if os.name != "nt" or not directory.exists():
-        return {dll: False for dll in dll_names}
-
-    status: dict[str, bool] = {}
-    for dll in dll_names:
-        try:
-            ctypes.CDLL(str(directory / dll))
-        except Exception:
-            status[dll] = False
-        else:
-            status[dll] = True
-    return status
+def _check_python_package(name):
+    try:
+        importlib.import_module(name)
+        return {"ok": True, "version": metadata.version(name), "error": None}
+    except Exception as exc:
+        return {"ok": False, "version": None, "error": f"{type(exc).__name__}: {exc}"}
 
 
-def _candidate_windows_dll_dirs() -> list[str]:
-    seen: set[str] = set()
-    dirs: list[str] = []
-    for item in [*_env_dll_directories(), *COMMON_WINDOWS_DLL_DIRS]:
-        normalized = str(Path(item))
-        if normalized not in seen:
-            seen.add(normalized)
-            dirs.append(normalized)
-    return dirs
-
-
-def _env_dll_directories() -> list[str]:
-    raw = os.environ.get(WINDOWS_DLL_ENV, "")
-    return [part.strip() for part in raw.split(os.pathsep) if part.strip()]
-
-
-def _inspect_fonts(platform_system: str | None = None) -> dict[str, Any]:
+def _inspect_fonts(platform_system=None):
     return inspect_recommended_font_groups(platform_system)
 
 
-def _inspect_fontconfig() -> dict[str, Any]:
+def _inspect_fontconfig():
     executable = shutil.which("fc-match")
-    result: dict[str, Any] = {
-        "ok": False,
-        "executable": executable,
-        "sample": None,
-        "error": None,
-    }
-    if not executable:
+    result = {"ok": False, "executable": executable, "sample": None, "error": None}
+    if executable:
+        try:
+            proc = subprocess.run([executable, "-f", "%{family}\n", "sans-serif"], check=True,
+                                  capture_output=True, text=True, timeout=5)
+            result.update(ok=True, sample=proc.stdout.strip())
+        except Exception as exc:
+            result["error"] = str(exc)
+    else:
         result["error"] = "fc-match was not found on PATH."
-        return result
-
-    try:
-        proc = subprocess.run(
-            [executable, "-f", "%{family}\n", "sans-serif"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=5,
-        )
-    except Exception as exc:
-        result["error"] = f"{type(exc).__name__}: {exc}"
-        return result
-
-    result["sample"] = proc.stdout.strip() or None
-    result["ok"] = True
     return result
 
 
-def _recommendations(result: dict[str, Any]) -> list[str]:
-    recommendations: list[str] = []
-    is_linux = result.get("platform", {}).get("system") == "Linux"
-    package_info = result.get("packages", {}).get("weasyprint", {})
-    if not package_info.get("ok"):
-        recommendations.append("Install Python dependencies with: python -m pip install agent-markdown-pdf")
-    mini_racer_info = result.get("packages", {}).get("mini-racer", {})
-    if not mini_racer_info.get("ok"):
-        recommendations.append("Install KaTeX rendering support with: python -m pip install mini-racer")
-    math_info = result.get("packages", {}).get("latex2mathml", {})
-    if not math_info.get("ok"):
-        recommendations.append("Install LaTeX math support with: python -m pip install latex2mathml")
-    matplotlib_info = result.get("packages", {}).get("matplotlib", {})
-    if not matplotlib_info.get("ok"):
-        recommendations.append("Install SVG math rendering support with: python -m pip install matplotlib")
+def _recommendations(result):
+    recommendations = []
+    tools = result.get("tools", {})
+    if not result.get("packages", {}).get("playwright", {}).get("ok"):
+        recommendations.append("Install Python dependencies: python -m pip install agent-markdown-pdf")
+    if not tools.get("browser", {}).get("ok"):
+        recommendations.append(tools.get("browser", {}).get("hint") or
+                               "Install the browser: python -m playwright install chromium --no-shell")
+    for name in ("mermaid", "katex"):
+        if not tools.get(name, {}).get("ok"):
+            recommendations.append(f"The bundled {name} asset is missing; reinstall agent-markdown-pdf.")
+    if result.get("platform", {}).get("system") == "Linux":
+        if not tools.get("fontconfig", {}).get("ok"):
+            recommendations.append("Install fontconfig for font diagnostics: sudo apt-get install fontconfig")
+        if not result.get("ok"):
+            recommendations.append("If Chromium cannot load system libraries: python -m playwright install-deps chromium")
+    fonts = result.get("fonts", {})
+    if fonts.get("error"):
+        recommendations.append("Font inspection failed; inspect the reported error and verify the PDF visually.")
+    for name, group in fonts.get("groups", {}).items():
+        if not group.get("ok"):
+            preferred = ", ".join(group.get("preferred", group.get("recommended", group.get("missing", []))))
+            recommendations.append(f"Provide a {name} font: {preferred}. See the README platform font setup.")
+    for name, check in result.get("render_checks", {}).items():
+        if not check.get("ok"):
+            recommendations.append(check.get("hint") or f"Inspect render_checks.{name} errors and warnings before retrying.")
+    return recommendations or ["No action needed."]
 
-    mermaid_info = result.get("tools", {}).get("mermaid", {})
-    if not mermaid_info.get("ok"):
-        recommendations.append(
-            "Optional: install Mermaid rendering support with Node.js plus: "
-            "npm install -g @mermaid-js/mermaid-cli"
-        )
-    fontconfig_info = result.get("tools", {}).get("fontconfig")
-    if is_linux and fontconfig_info and not fontconfig_info.get("ok"):
-        recommendations.append(
-            "Install fontconfig so WeasyPrint/Pango can resolve system fonts, for example: "
-            "sudo apt-get install fontconfig"
-        )
 
-    font_info = result.get("fonts", {})
-    font_groups = font_info.get("groups", {})
-    if font_info.get("error"):
-        recommendations.append("Font inspection failed; run conversion once and verify CJK text visually.")
-    if font_groups.get("latin_sans") and not font_groups["latin_sans"].get("ok"):
-        recommendations.append(
-            "Install a Latin sans font so digits, dates, versions, and page counters avoid CJK font subsets. "
-            "On Debian or Ubuntu, use: sudo apt-get install fonts-liberation fonts-dejavu-core"
-        )
-    if font_groups.get("cjk_sans") and not font_groups["cjk_sans"].get("ok"):
-        if is_linux:
-            recommendations.append(
-                "Install Noto CJK for Chinese text on Linux: sudo apt-get install fonts-noto-cjk"
-            )
-        else:
-            recommendations.append(
-                "Install or enable a CJK sans font for Chinese text, such as Microsoft YaHei, "
-                "PingFang SC, Noto Sans CJK SC, or Source Han Sans SC."
-            )
-    if font_groups.get("monospace") and not font_groups["monospace"].get("ok"):
-        recommendations.append(
-            "Install a monospace font for code blocks. On Debian or Ubuntu, use: "
-            "sudo apt-get install fonts-cascadia-code if that package is available; "
-            "otherwise provide Cascadia Code in the runtime."
-        )
-    elif (
-        is_linux
-        and font_groups.get("monospace")
-        and "Cascadia Mono" in font_groups["monospace"].get("missing", [])
-        and "Cascadia Code" in font_groups["monospace"].get("missing", [])
-    ):
-        recommendations.append(
-            "Optional: install Cascadia Code on Linux for default-theme code blocks: "
-            "sudo apt-get install fonts-cascadia-code if that package is available, "
-            "or provide Cascadia Code in the runtime."
-        )
-    if font_groups.get("math") and not font_groups["math"].get("ok"):
-        recommendations.append(
-            "Optional: install STIX fonts for math fallback, for example: sudo apt-get install fonts-stix"
-        )
-    if font_groups.get("emoji") and not font_groups["emoji"].get("ok"):
-        if is_linux:
-            recommendations.append(
-                "Provide a monochrome emoji font such as Noto Emoji for stable PDF output on Linux. "
-                "Noto Color Emoji is widely packaged, but PDF viewers can render color emoji too small "
-                "or misaligned."
-            )
-        else:
-            recommendations.append(
-                "Install or enable a system emoji font such as Segoe UI Emoji, Apple Color Emoji, "
-                "Noto Color Emoji, or Twemoji Mozilla."
-            )
-    elif (
-        is_linux
-        and font_groups.get("emoji")
-        and "Noto Emoji" in font_groups["emoji"].get("missing", [])
-        and "Noto Color Emoji" in font_groups["emoji"].get("found", [])
-    ):
-        recommendations.append(
-            "Noto Color Emoji was found. It provides glyph coverage, but color emoji can render too small "
-            "or misaligned in WeasyPrint/PDFium output. Prefer monochrome Noto Emoji if emoji layout matters."
-        )
-    elif (
-        not is_linux
-        and font_groups.get("emoji")
-        and "Segoe UI Emoji" in font_groups["emoji"].get("missing", [])
-    ):
-        recommendations.append(
-            "Optional: provide Segoe UI Emoji if you want the default theme's preferred emoji glyphs. "
-            "Existing emoji fallback fonts will still be used."
-        )
-
-    if os.name == "nt":
-        env_value = result.get("environment", {}).get(WINDOWS_DLL_ENV)
-        probes = result.get("native_libraries", [])
-        has_complete_probe = any(probe.get("all_found") for probe in probes)
-        if not env_value:
-            recommendations.append(
-                f"Set {WINDOWS_DLL_ENV} to the directory containing Pango/GLib/Cairo DLLs, "
-                f"for example: setx {WINDOWS_DLL_ENV} \"D:\\Environment\\msys64\\mingw64\\bin\""
-            )
-        if not has_complete_probe:
-            recommendations.append(
-                "Install native WeasyPrint libraries on Windows, for example in MSYS2: "
-                "pacman -S mingw-w64-x86_64-pango"
-            )
-
-    if not recommendations and result.get("ok"):
-        recommendations.append("No action needed.")
-    return recommendations
+def format_doctor_text(result):
+    lines = [f"mdtopdf doctor: {'OK' if result.get('ok') else 'NEEDS ATTENTION'}",
+             f"Python: {result['python']['version']} ({result['python']['executable']})",
+             f"Platform: {result['platform']['system']}"]
+    for title, records in (("Packages", result.get("packages", {})), ("Tools", result.get("tools", {})),
+                           ("Fonts", result.get("fonts", {}).get("groups", {})),
+                           ("Render checks", result.get("render_checks", {}))):
+        if records:
+            lines.extend(["", title + ":"])
+            for name, item in records.items():
+                detail = item.get("error") or item.get("executable") or ", ".join(item.get("found", []))
+                lines.append(f"  - {name}: {'OK' if item.get('ok') else 'FAIL'} {detail or ''}".rstrip())
+    lines.extend(["", "Recommendations:", *[f"  - {item}" for item in result.get("recommendations", [])]])
+    return "\n".join(lines)

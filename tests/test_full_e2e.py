@@ -134,10 +134,7 @@ def test_public_markdown_text_api_generates_obsidian_compatible_pdf(tmp_path):
 
 
 def test_python_api_generates_mermaid_pdf(tmp_path):
-    if find_mermaid_backend() is None:
-        if os.environ.get("MDTOPDF_REQUIRE_MERMAID") == "1":
-            pytest.fail("CI requires real Mermaid rendering, but mmdc was not found.")
-        pytest.skip("Optional Mermaid CLI is not installed.")
+    assert find_mermaid_backend() is not None, "Bundled Mermaid asset is required."
     source = tmp_path / "diagram.md"
     output = tmp_path / "diagram.pdf"
     source.write_text(
@@ -146,7 +143,7 @@ def test_python_api_generates_mermaid_pdf(tmp_path):
 ```mermaid
 graph TD
   A[Markdown] --> B[Mermaid SVG]
-  B --> C[WeasyPrint PDF]
+  B --> C[Chromium PDF]
 ```
 """,
         encoding="utf-8",
@@ -247,10 +244,8 @@ class TestMdtopdfCli:
 
         assert "ok" in data
         assert "packages" in data
-        assert "weasyprint" in data["packages"]
-        assert "mini-racer" in data["packages"]
-        assert "latex2mathml" in data["packages"]
-        assert "matplotlib" in data["packages"]
+        assert "playwright" in data["packages"]
+        assert "browser" in data["tools"]
         assert "tools" in data
         assert "mermaid" in data["tools"]
         assert "recommendations" in data
@@ -276,12 +271,11 @@ class TestMdtopdfCli:
             return
 
         result = subprocess.run(
-            [pdfinfo, str(output)],
+            [pdfinfo, "-enc", "UTF-8", str(output)],
             capture_output=True,
-            text=True,
             check=True,
             timeout=30,
         )
-        assert "Page size:" in result.stdout
-        assert "A4" in result.stdout
-        assert "Pages:" in result.stdout
+        assert b"Page size:" in result.stdout
+        assert b"A4" in result.stdout
+        assert b"Pages:" in result.stdout

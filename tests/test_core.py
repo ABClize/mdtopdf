@@ -16,13 +16,12 @@ from mdtopdf.core import markdown as markdown_core
 from mdtopdf.core import mermaid as mermaid_core
 from mdtopdf.core.html import convert_markdown_file_to_html, derive_html_output_path
 from mdtopdf.core.katex import load_katex_css, render_katex_to_html
-from mdtopdf.core.mermaid import inspect_mermaid_backend, normalize_mermaid_source, prepare_mermaid_svg
+from mdtopdf.core.mermaid import inspect_mermaid_backend
 from mdtopdf.core.markdown import (
     DEFAULT_THEME,
     available_themes,
     compose_css,
     latex_to_html_math,
-    latex_to_mathml,
     load_theme_css,
     render_markdown_to_html,
 )
@@ -288,15 +287,13 @@ def test_obsidian_deep_tab_indented_list_markers():
     assert "literal" in rendered.body
 
 
-def test_latex_to_mathml():
-    mathml = latex_to_mathml(r"\frac{a}{b}", display="inline")
-
-    assert "<math" in mathml
-    assert "<mfrac>" in mathml
-
+def test_math_placeholder_encodes_untrusted_source():
+    html = latex_to_html_math('<script>bad()</script>')
+    assert 'data-mdtopdf-math=' in html
+    assert '<script>' not in html
 
 def test_latex_to_html_math_uses_katex():
-    html = latex_to_html_math(r"\frac{a}{b}", display="block")
+    html = render_katex_to_html(r"\frac{a}{b}", display="block")
 
     assert "katex-display" in html
     assert "katex-html" in html
@@ -321,47 +318,10 @@ def test_katex_css_rewrites_font_urls_to_package_files():
     assert "url(fonts/" not in css
 
 
-def test_katex_context_can_be_closed(monkeypatch):
-    katex_core.close_katex_context()
-
-    class FakeMiniRacer:
-        def __init__(self):
-            self.closed = 0
-
-        def eval(self, source: str) -> None:
-            assert isinstance(source, str)
-
-        def call(self, name: str, latex: str, options: dict[str, object]) -> str:
-            assert name == "katex.renderToString"
-            assert latex == "x"
-            assert options["output"] == "html"
-            return "<span>x</span>"
-
-        def close(self) -> None:
-            self.closed += 1
-
-    fake = FakeMiniRacer()
-    monkeypatch.setitem(sys.modules, "py_mini_racer", types.SimpleNamespace(MiniRacer=lambda: fake))
-    monkeypatch.setattr(katex_core, "_resource_text", lambda relative_path: "")
-
-    assert katex_core.render_katex_to_html("x") == "<span>x</span>"
-
-    katex_core.close_katex_context()
-    katex_core.close_katex_context()
-
-    assert fake.closed == 1
-
-
-def test_latex_to_html_math_falls_back_to_svg_when_katex_fails(monkeypatch):
-    def fail_katex(content: str, *, display: str = "inline") -> str:
-        raise RuntimeError("no katex")
-
-    monkeypatch.setattr(markdown_core, "render_katex_to_html", fail_katex)
-    html = latex_to_html_math(r"\frac{a}{b}", display="block")
-
-    assert 'class="math-svg math-display"' in html
-    assert "data:image/svg+xml;base64," in html
-
+def test_invalid_math_has_readable_source_warning():
+    rendered = render_markdown_to_html(r"$\unknowncommand{x}$")
+    assert "math-source" in rendered.body
+    assert any(w["type"] == "math_fallback" for w in rendered.warnings)
 
 def test_safe_html_subset_and_mark_rendering_do_not_confuse_math():
     rendered = render_markdown_to_html(
@@ -495,7 +455,7 @@ def test_extended_safe_authoring_html_tags():
 
 
 def test_chemistry_formula_falls_back_to_readable_html():
-    html = latex_to_html_math(r"\ce{CO2 + C ->[heat] 2 CO}")
+    html = render_katex_to_html(r"\ce{CO2 + C ->[heat] 2 CO}")
 
     assert "katex" in html
     assert "mathrm" in html
@@ -503,21 +463,14 @@ def test_chemistry_formula_falls_back_to_readable_html():
     assert r"\ce" not in html
 
 
-def test_block_chemistry_formula_strips_latex_comments(monkeypatch):
-    def fail_katex(content: str, *, display: str = "inline") -> str:
-        raise RuntimeError("no katex")
-
-    monkeypatch.setattr(markdown_core, "render_katex_to_html", fail_katex)
-    html = latex_to_html_math("% chemistry\n" r"\ce{Zn^2+ <=>[a][b] Zn(OH)2 v}", display="block")
-
-    assert "chemistry-display" in html
+def test_block_chemistry_formula_strips_latex_comments():
+    html = render_katex_to_html("% chemistry\n" r"\ce{Zn^2+ <=>[a][b] Zn(OH)2 v}", display="block")
+    assert "katex-display" in html
     assert "% chemistry" not in html
-    assert "Zn<sup>2+</sup>" in html
-    assert "OH)<sub>2</sub>" in html
-
+    assert "Zn" in html
 
 def test_array_formula_uses_katex():
-    html = latex_to_html_math(
+    html = render_katex_to_html(
         r"""\begin{array}{lll}
 \nabla\times E &=& -\;\frac{\partial{B}}{\partial{t}}
 \ \nabla\times H &=& \frac{\partial{D}}{\partial{t}}+J
@@ -531,114 +484,21 @@ def test_array_formula_uses_katex():
     assert "mtable" in html
 
 
-def test_array_formula_falls_back_to_html_table_when_katex_fails(monkeypatch):
-    def fail_katex(content: str, *, display: str = "inline") -> str:
-        raise RuntimeError("no katex")
-
-    monkeypatch.setattr(markdown_core, "render_katex_to_html", fail_katex)
-    html = latex_to_html_math(
-        r"""\begin{array}{lll}
-\nabla\times E &=& -\;\frac{\partial{B}}{\partial{t}}
-\ \nabla\times H &=& \frac{\partial{D}}{\partial{t}}+J
-\ \nabla\cdot D &=& \rho
-\ \nabla\cdot B &=& 0
-\ \end{array}""",
-        display="block",
-    )
-
-    assert 'class="math-array"' in html
-    assert html.count("<tr>") == 4
-    assert "data:image/svg+xml;base64," in html
-
-
-def test_mermaid_fence_uses_diagram_renderer(monkeypatch):
-    def fake_render(source: str) -> str:
-        assert "graph TD" in source
-        return '<figure class="mermaid-diagram"><img src="data:image/svg+xml;base64,abc"></figure>'
-
-    monkeypatch.setattr(markdown_core, "find_mermaid_backend", lambda: object())
-    monkeypatch.setattr(markdown_core, "render_mermaid_to_html", fake_render)
-    rendered = markdown_core.render_markdown_to_html("```mermaid\ngraph TD; A-->B\n```\n")
-
+def test_mermaid_fence_uses_bundled_diagram_renderer():
+    rendered = render_markdown_to_html("~~~mermaid\ngraph TD; A[One]-->B[Two]\n~~~")
     assert "mermaid-diagram" in rendered.body
-    assert "data:image/svg+xml;base64,abc" in rendered.body
-    assert "language-mermaid" not in rendered.body
-
-
-def test_mermaid_fence_falls_back_to_code_when_mmdc_is_missing(monkeypatch):
-    def fail_render(source: str) -> str:
-        raise AssertionError("Mermaid renderer should not run without mmdc")
-
-    monkeypatch.setattr(markdown_core, "find_mermaid_backend", lambda: None)
-    monkeypatch.setattr(markdown_core, "render_mermaid_to_html", fail_render)
-    rendered = markdown_core.render_markdown_to_html("```mermaid\ngraph TD; A-->B\n```\n")
-
-    assert "mermaid-diagram" not in rendered.body
-    assert "language-text" in rendered.body
-    assert "graph TD" in rendered.body
+    assert "<svg" in rendered.body
+    assert "One" in rendered.body
+    assert "data-mdtopdf-mermaid=" not in rendered.body
 
 
 def test_mermaid_backend_probe_shape():
     result = inspect_mermaid_backend()
-
-    assert "ok" in result
-    assert "backend" in result
-    assert "executable" in result
+    assert result["ok"]
+    assert result["backend"] == "bundled-javascript"
+    assert result["executable"] is None
     assert result["requires_network"] is False
-    assert "error" in result
-
-
-def test_mermaid_backend_only_uses_local_mmdc(monkeypatch):
-    monkeypatch.setattr(mermaid_core.shutil, "which", lambda name: None)
-
-    result = mermaid_core.inspect_mermaid_backend()
-
-    assert result["ok"] is False
-    assert result["backend"] is None
-    assert result["optional"] is True
-    assert result["requires_network"] is False
-
-    def fake_which(name: str) -> str | None:
-        if name == "npx":
-            return r"C:\fake\npx.cmd"
-        return None
-
-    monkeypatch.setattr(mermaid_core.shutil, "which", fake_which)
-    assert mermaid_core.find_mermaid_backend() is None
-
-
-def test_mermaid_backend_detects_mmdc(monkeypatch):
-    monkeypatch.setattr(mermaid_core.shutil, "which", lambda name: r"C:\fake\mmdc.cmd" if name == "mmdc" else None)
-
-    backend = mermaid_core.find_mermaid_backend()
-
-    assert backend is not None
-    assert backend.kind == "mmdc"
-    assert backend.command == [r"C:\fake\mmdc.cmd"]
-
-
-def test_mermaid_source_disables_html_labels_by_default():
-    source = normalize_mermaid_source("graph TD\n  A[One] --> B[Two]\n")
-
-    assert "htmlLabels" in source
-    assert "graph TD" in source
-
-
-def test_prepare_mermaid_svg_rewrites_foreign_object_labels():
-    svg = (
-        '<svg viewBox="0 0 100 40">'
-        '<g class="label" transform="translate(0, 0)"><rect/>'
-        '<foreignObject width="80" height="24"><div><span><p>Node A</p></span></div></foreignObject>'
-        "</g></svg>"
-    )
-
-    prepared = prepare_mermaid_svg(svg)
-
-    assert "<foreignObject" not in prepared
-    assert "<text" in prepared
-    assert 'font-family="Segoe UI, Arial, Liberation Sans, DejaVu Sans' in prepared
-    assert "Node A" in prepared
-
+    assert result["optional"] is False
 
 def test_raw_html_is_escaped():
     rendered = render_markdown_to_html(SAMPLE_MARKDOWN)
@@ -808,9 +668,11 @@ def test_theme_loading():
     assert "tab-size: 2;" in css
     assert "padding: 0.78em 0.88em 0.82em;" in css
     assert "pre::before {" in css
-    assert "radial-gradient(circle at 4px 4px, #ff5f56" in css
-    assert "radial-gradient(circle at 16px 4px, #ffbd2e" in css
-    assert "radial-gradient(circle at 28px 4px, #27c93f" in css
+    dots_block = css.split("pre::before {", 1)[1].split("}", 1)[0]
+    assert "data:image/svg+xml," in dots_block
+    assert "radial-gradient" not in dots_block
+    for color in ("ff5f56", "ffbd2e", "27c93f"):
+        assert f"fill='%23{color}'" in dots_block
     assert "width: 32px;" in css
     assert "border-radius: 8px;" in css
     assert "max-height: 230mm;" in css
@@ -886,7 +748,8 @@ def test_default_theme_has_single_style_layer():
 def test_theme_styles_obsidian_callouts_as_document_components():
     css = load_theme_css(DEFAULT_THEME)
     regular_quote_block = css.rsplit("blockquote {", 1)[1].split("}", 1)[0]
-    callout_block = css.rsplit("blockquote.callout {", 1)[1].split("}", 1)[0]
+    callout_block = css.split("blockquote.callout {", 1)[1].split("}", 1)[0]
+    icon_block = css.split("blockquote.callout .callout-title::before {", 1)[1].split("}", 1)[0]
 
     assert (
         "background: linear-gradient(90deg, #d97706 0, #d97706 4px, "
@@ -896,41 +759,42 @@ def test_theme_styles_obsidian_callouts_as_document_components():
     assert "border-radius: 8px;" in regular_quote_block
     assert "padding: 0.58em 0.82em 0.58em 1.05em;" in regular_quote_block
     assert "blockquote.callout {" in css
-    assert (
-        "background: linear-gradient(90deg, #0f6ea7 0, #0f6ea7 5px, "
-        "#f5f9fd 5px, #f5f9fd 100%);"
-    ) in callout_block
+    assert "background: #f5f9fd;" in callout_block
+    assert "border-left: 5px solid #0f6ea7;" in callout_block
     assert "border: 1px solid #d6e3ef;" in callout_block
     assert "border-radius: 8px;" in callout_block
     assert "box-shadow: 0 4px 12px rgba(15, 42, 67, 0.05);" in css
-    assert "padding: 0.58em 0.82em 0.68em 1.2em;" in css
+    assert "padding: 0.58em 0.82em 0.68em calc(1.2em - 4px);" in css
     assert "blockquote.callout p {\n  margin: 0.24em 0 0;\n}" in css
     assert "border-bottom: 1px solid #c9dff2;" in css
     assert "blockquote.callout .callout-title {" in css
     assert "blockquote.callout .callout-title::before {" in css
-    assert "border-radius: 50%;" in css
-    assert 'content: "i";' in css
+    assert 'content: "";' in icon_block
+    assert "data:image/svg+xml," in icon_block
+    assert "font-family:" not in icon_block
     assert "height: 1.34em;" in css
     assert "width: 1.34em;" in css
     assert ".callout.callout-tip,\n.callout.callout-success,\n.callout.callout-done,\n.callout.callout-check {" in css
-    assert "linear-gradient(90deg, #15803d 0, #15803d 5px, #f3fbf6 5px, #f3fbf6 100%);" in css
+    assert "background: #f3fbf6;" in css
+    assert "border-left-color: #15803d;" in css
     assert ".callout.callout-tip .callout-title,\n.callout.callout-success .callout-title" in css
-    assert 'content: "+";' in css
     assert ".callout.callout-warning,\n.callout.callout-caution,\n.callout.callout-attention {" in css
-    assert "linear-gradient(90deg, #b45309 0, #b45309 5px, #fff8ed 5px, #fff8ed 100%);" in css
+    assert "background: #fff8ed;" in css
+    assert "border-left-color: #b45309;" in css
     assert ".callout.callout-warning .callout-title,\n.callout.callout-caution .callout-title" in css
-    assert 'content: "!";' in css
     assert (
         ".callout.callout-danger,\n.callout.callout-error,\n.callout.callout-fail,\n"
         ".callout.callout-failure,\n.callout.callout-missing {"
     ) in css
-    assert "linear-gradient(90deg, #b91c1c 0, #b91c1c 5px, #fff5f5 5px, #fff5f5 100%);" in css
+    assert "background: #fff5f5;" in css
+    assert "border-left-color: #b91c1c;" in css
     assert ".callout.callout-question,\n.callout.callout-help,\n.callout.callout-faq {" in css
-    assert "linear-gradient(90deg, #6b4fc4 0, #6b4fc4 5px, #f7f5ff 5px, #f7f5ff 100%);" in css
-    assert 'content: "?";' in css
+    assert "background: #f7f5ff;" in css
+    assert "border-left-color: #6b4fc4;" in css
     assert ".callout.callout-quote {" in css
-    assert "linear-gradient(90deg, #777b82 0, #777b82 5px, #f8f8f6 5px, #f8f8f6 100%);" in css
-    assert 'content: "\\"";' in css
+    assert "background: #f8f8f6;" in css
+    assert "border-left-color: #777b82;" in css
+    assert "@media print {\n  pre,\n  blockquote.callout {\n    box-shadow: none;" in css
 
 
 def test_available_themes_only_lists_default():
@@ -1171,10 +1035,8 @@ def test_doctor_json_shape():
     assert isinstance(result["ok"], bool)
     assert "python" in result
     assert "packages" in result
-    assert "weasyprint" in result["packages"]
-    assert "mini-racer" in result["packages"]
-    assert "latex2mathml" in result["packages"]
-    assert "matplotlib" in result["packages"]
+    assert "playwright" in result["packages"]
+    assert "browser" in result["tools"]
     assert "tools" in result
     assert "mermaid" in result["tools"]
     assert "fonts" in result
@@ -1244,13 +1106,10 @@ def test_doctor_linux_accepts_open_font_baseline_without_microsoft_recommendatio
     result = {
         "ok": True,
         "platform": {"system": "Linux"},
-        "packages": {
-            "weasyprint": {"ok": True},
-            "mini-racer": {"ok": True},
-            "latex2mathml": {"ok": True},
-            "matplotlib": {"ok": True},
-        },
+        "packages": {"playwright": {"ok": True}},
         "tools": {
+            "browser": {"ok": True},
+            "katex": {"ok": True},
             "mermaid": {"ok": True},
             "fontconfig": {"ok": True},
         },
@@ -1281,21 +1140,17 @@ def test_doctor_linux_accepts_open_font_baseline_without_microsoft_recommendatio
 
     assert not any("Microsoft YaHei" in item for item in recommendations)
     assert not any("Segoe UI Emoji" in item for item in recommendations)
-    assert any("Cascadia Code" in item and "code blocks" in item for item in recommendations)
-    assert any("Noto Color Emoji" in item and "Noto Emoji" in item for item in recommendations)
+    assert recommendations == ["No action needed."]
 
 
 def test_doctor_linux_recommends_fontconfig_when_missing():
     result = {
         "ok": True,
         "platform": {"system": "Linux"},
-        "packages": {
-            "weasyprint": {"ok": True},
-            "mini-racer": {"ok": True},
-            "latex2mathml": {"ok": True},
-            "matplotlib": {"ok": True},
-        },
+        "packages": {"playwright": {"ok": True}},
         "tools": {
+            "browser": {"ok": True},
+            "katex": {"ok": True},
             "mermaid": {"ok": True},
             "fontconfig": {"ok": False, "error": "fc-match was not found on PATH."},
         },
@@ -1319,13 +1174,10 @@ def test_doctor_recommends_latin_fonts_when_missing():
     result = {
         "ok": True,
         "platform": {"system": "Linux"},
-        "packages": {
-            "weasyprint": {"ok": True},
-            "mini-racer": {"ok": True},
-            "latex2mathml": {"ok": True},
-            "matplotlib": {"ok": True},
-        },
+        "packages": {"playwright": {"ok": True}},
         "tools": {
+            "browser": {"ok": True},
+            "katex": {"ok": True},
             "mermaid": {"ok": True},
             "fontconfig": {"ok": True},
         },
@@ -1342,20 +1194,17 @@ def test_doctor_recommends_latin_fonts_when_missing():
 
     recommendations = doctor._recommendations(result)
 
-    assert any("Latin sans" in item and "digits" in item for item in recommendations)
+    assert any("latin_sans" in item and "Liberation Sans" in item for item in recommendations)
 
 
 def test_doctor_linux_recommends_noto_fonts_when_cjk_or_emoji_missing():
     result = {
         "ok": True,
         "platform": {"system": "Linux"},
-        "packages": {
-            "weasyprint": {"ok": True},
-            "mini-racer": {"ok": True},
-            "latex2mathml": {"ok": True},
-            "matplotlib": {"ok": True},
-        },
+        "packages": {"playwright": {"ok": True}},
         "tools": {
+            "browser": {"ok": True},
+            "katex": {"ok": True},
             "mermaid": {"ok": True},
             "fontconfig": {"ok": True},
         },
@@ -1372,56 +1221,23 @@ def test_doctor_linux_recommends_noto_fonts_when_cjk_or_emoji_missing():
 
     recommendations = doctor._recommendations(result)
 
-    assert any("fonts-noto-cjk" in item for item in recommendations)
-    assert any("Noto Emoji" in item and "monochrome" in item for item in recommendations)
+    assert any("Noto Sans CJK SC" in item for item in recommendations)
+    assert any("Noto Emoji" in item for item in recommendations)
     assert not any("Microsoft YaHei" in item for item in recommendations)
     assert not any("Segoe UI Emoji" in item for item in recommendations)
 
 
-def test_doctor_reports_missing_mini_racer(monkeypatch):
-    real_import = importlib.import_module
-
-    def fake_import(name: str):
-        if name == "py_mini_racer":
-            raise ImportError("missing v8")
-        return real_import(name)
-
-    monkeypatch.setattr(importlib, "import_module", fake_import)
+def test_doctor_requires_browser(monkeypatch):
+    monkeypatch.setattr(doctor, "inspect_browser", lambda: {"ok": False, "hint": "Install Chromium"})
     result = doctor.run_doctor()
-
-    assert result["ok"] is False
-    assert result["packages"]["mini-racer"]["ok"] is False
-    assert "missing v8" in result["packages"]["mini-racer"]["error"]
-
-
-def test_doctor_treats_missing_mermaid_as_optional(monkeypatch):
-    monkeypatch.setattr(doctor, "_check_python_package", lambda name: {"ok": True, "version": "1.0", "error": None})
-    monkeypatch.setattr(doctor, "_inspect_native_libraries", lambda: [])
-    monkeypatch.setattr(
-        doctor,
-        "inspect_mermaid_backend",
-        lambda: {
-            "ok": False,
-            "backend": None,
-            "executable": None,
-            "requires_network": False,
-            "optional": True,
-            "error": "`mmdc` was not found on PATH.",
-        },
-    )
-
-    result = doctor.run_doctor()
-
-    assert result["ok"] is True
-    assert result["tools"]["mermaid"]["ok"] is False
-    assert any(item.startswith("Optional: install Mermaid") for item in result["recommendations"])
-
+    assert not result["ok"]
+    assert "Install Chromium" in result["recommendations"]
 
 def test_doctor_import_failure_shape(monkeypatch):
     real_import = importlib.import_module
 
     def fake_import(name: str):
-        if name == "weasyprint":
+        if name == "playwright":
             raise ImportError("missing package")
         return real_import(name)
 
@@ -1429,5 +1245,5 @@ def test_doctor_import_failure_shape(monkeypatch):
     result = doctor.run_doctor()
 
     assert result["ok"] is False
-    assert result["packages"]["weasyprint"]["ok"] is False
-    assert "missing package" in result["packages"]["weasyprint"]["error"]
+    assert result["packages"]["playwright"]["ok"] is False
+    assert "missing package" in result["packages"]["playwright"]["error"]

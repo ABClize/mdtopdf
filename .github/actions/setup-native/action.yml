@@ -1,44 +1,17 @@
-name: Native PDF dependencies
-description: Install native libraries and the platform font baseline used by tests.
+name: Platform fonts
+description: Install the Linux font baseline used by PDF tests.
 runs:
   using: composite
   steps:
-    - name: Linux libraries and fonts
+    - name: Linux fonts and PDF inspection
       if: runner.os == 'Linux'
       shell: bash
       run: |
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
-          fontconfig libcairo2 libffi-dev libgdk-pixbuf-2.0-0 \
-          libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
-          poppler-utils shared-mime-info fonts-dejavu-core \
-          fonts-liberation fonts-noto-cjk fonts-stix
+          fontconfig poppler-utils fonts-dejavu-core fonts-liberation \
+          fonts-noto-cjk fonts-noto-color-emoji fonts-stix
         if apt-cache show fonts-cascadia-code >/dev/null 2>&1; then
           sudo apt-get install -y --no-install-recommends fonts-cascadia-code
         fi
         fc-cache -f
-
-    - name: Windows libraries
-      if: runner.os == 'Windows'
-      id: msys2
-      uses: msys2/setup-msys2@v2
-      with:
-        msystem: UCRT64
-        install: mingw-w64-ucrt-x86_64-pango
-        update: true
-
-    - name: Set Windows DLL search path
-      if: runner.os == 'Windows'
-      shell: pwsh
-      env:
-        MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
-      run: |
-        $dlls = Join-Path $env:MSYS2_LOCATION 'ucrt64\bin'
-        "WEASYPRINT_DLL_DIRECTORIES=$dlls" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
-    - name: macOS libraries
-      if: runner.os == 'macOS'
-      shell: bash
-      run: |
-        brew install pango
-        echo "DYLD_FALLBACK_LIBRARY_PATH=$(brew --prefix)/lib" >> "$GITHUB_ENV"

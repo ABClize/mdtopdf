@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-from io import BytesIO
 from dataclasses import dataclass, field
 from html import escape, unescape
 from importlib import resources
@@ -33,9 +32,8 @@ from mdtopdf.core.inline import (
     protect_code_blocks,
     restore_code_blocks,
 )
-from mdtopdf.core.diagnostics import collect_warnings, warn
-from mdtopdf.core.katex import load_katex_css, render_katex_to_html
-from mdtopdf.core.mermaid import find_mermaid_backend, render_mermaid_to_html
+from mdtopdf.core.diagnostics import collect_warnings
+from mdtopdf.core.katex import load_katex_css
 from mdtopdf.core.obsidian import (
     format_resource_href,
     preprocess_obsidian_markdown,
@@ -61,7 +59,7 @@ class RenderedHTML:
         title: Resolved document title.
         body: Rendered HTML body fragment.
         css: Combined CSS used by the full document.
-        html: Complete HTML document suitable for WeasyPrint.
+        html: Complete static HTML document.
     """
 
     title: str
@@ -147,6 +145,8 @@ def render_markdown_to_html(
     include_page_footer: bool = True,
     page_numbers: bool = True,
     obsidian_embed_resolver: Callable[[str], str] | None = None,
+    _defer_browser: bool = False,
+    _browser_base_url: str | Path | None = None,
 ) -> RenderedHTML:
     """Render Markdown text to a full Obsidian-compatible HTML document.
 
@@ -211,6 +211,12 @@ def render_markdown_to_html(
         lang=infer_document_lang(markdown_text),
     )
     html = _build_document(resolved_title, body, css, lang=infer_document_lang(markdown_text))
+    if not _defer_browser and ('data-mdtopdf-math=' in body or 'data-mdtopdf-mermaid=' in body):
+        from mdtopdf.core.browser import render_document
+        result = render_document(html, base_url=_browser_base_url)
+        body = result.body
+        warnings.extend(result.warnings)
+        html = _build_document(resolved_title, body, css, lang=infer_document_lang(markdown_text))
     return RenderedHTML(title=resolved_title, body=body, css=css, html=html, warnings=warnings)
 
 
@@ -273,10 +279,8 @@ def _render_fence(
     token = tokens[idx]
     lang = token.info.strip().split(maxsplit=1)[0] if token.info else ""
     if lang.lower() in {"mermaid", "mmd"}:
-        if find_mermaid_backend() is None:
-            warn("mermaid_unavailable", "Mermaid CLI was not found; the diagram is shown as source code.")
-            return highlight_code(token.content, lang)
-        return render_mermaid_to_html(token.content)
+        encoded = base64.b64encode(token.content.encode("utf-8")).decode("ascii")
+        return f'<figure class="mermaid-diagram" data-mdtopdf-mermaid="{encoded}"></figure>\n'
     return highlight_code(token.content, lang)
 
 
@@ -307,228 +311,8 @@ def latex_to_html_math(content: str, *, display: str = "inline") -> str:
     latex = _strip_latex_comments(content).strip()
     if not latex:
         return ""
-    try:
-        return render_katex_to_html(latex, display=display)
-    except Exception as exc:
-        warn("math_fallback", "KaTeX rendering failed; a math fallback was used.", error=str(exc))
-    if _is_latex_array_environment(latex):
-        return latex_array_to_html(latex)
-    if r"\ce{" in latex:
-        return latex_to_chemistry_html(latex, display=display)
-
-    try:
-        svg = latex_to_svg(latex)
-    except Exception:
-        return latex_to_mathml(latex, display=display)
-
-    encoded = base64.b64encode(svg).decode("ascii")
-    safe_latex = escape(latex, quote=True)
-    css_class = "math-svg math-display" if display == "block" else "math-svg math-inline"
-    return (
-        f'<img class="{css_class}" alt="{safe_latex}" title="{safe_latex}" '
-        f'src="data:image/svg+xml;base64,{encoded}">'
-    )
-
-
-def latex_to_svg(content: str) -> bytes:
-    from matplotlib import mathtext
-
-    latex = _strip_latex_comments(content).strip()
-    math_source = latex if latex.startswith("$") and latex.endswith("$") else f"${latex}$"
-    buffer = BytesIO()
-    mathtext.math_to_image(math_source, buffer, format="svg", dpi=200)
-    return buffer.getvalue()
-
-
-def latex_to_mathml(content: str, *, display: str = "inline") -> str:
-    from latex2mathml import converter
-
-    latex = _strip_latex_comments(content).strip()
-    try:
-        return converter.convert(latex, display=display)
-    except Exception:
-        safe_latex = escape(latex)
-        if display == "block":
-            return f'<pre class="math-source math-source-display math-error"><code>{safe_latex}</code></pre>'
-        return f'<code class="math-source math-error">{safe_latex}</code>'
-
-
-def latex_to_chemistry_html(content: str, *, display: str = "inline") -> str:
-    latex = _strip_latex_comments(content).strip()
-    rendered = _replace_latex_command(
-        latex,
-        "ce",
-        lambda inner: _format_chemical_expression(inner),
-    )
-    rendered = rendered.replace("$", "")
-    safe_title = escape(latex, quote=True)
-    if display == "block":
-        return f'<div class="chemistry chemistry-display" title="{safe_title}">{rendered}</div>'
-    return f'<span class="chemistry chemistry-inline" title="{safe_title}">{rendered}</span>'
-
-
-def latex_array_to_html(content: str) -> str:
-    latex = _strip_latex_comments(content).strip()
-    body = _extract_latex_array_body(latex)
-    if body is None:
-        return latex_to_mathml(latex, display="block")
-
-    rows = _split_latex_array_rows(body)
-    if not rows:
-        return latex_to_mathml(latex, display="block")
-
-    html_rows = []
-    for row in rows:
-        cells = [cell.strip() for cell in row.split("&")]
-        html_cells = []
-        for cell in cells:
-            normalized = _normalize_latex_array_cell(cell)
-            if normalized:
-                html_cells.append(f"<td>{latex_to_html_math(normalized, display='inline')}</td>")
-            else:
-                html_cells.append("<td></td>")
-        html_rows.append("<tr>" + "".join(html_cells) + "</tr>")
-
-    return '<table class="math-array"><tbody>' + "".join(html_rows) + "</tbody></table>"
-
-
-def _is_latex_array_environment(latex: str) -> bool:
-    return bool(re.search(r"\\begin\{(?:array|aligned|align\*?|gathered)\}", latex))
-
-
-def _extract_latex_array_body(latex: str) -> str | None:
-    pattern = re.compile(
-        r"\\begin\{(?P<env>array|aligned|align\*?|gathered)\}(?:\{[^{}]*\})?(?P<body>.*?)\\end\{(?P=env)\}",
-        re.DOTALL,
-    )
-    match = pattern.search(latex)
-    if not match:
-        return None
-    return match.group("body")
-
-
-def _split_latex_array_rows(body: str) -> list[str]:
-    rows: list[str] = []
-    for line in body.splitlines():
-        line = _normalize_latex_array_cell(line.strip())
-        if not line:
-            continue
-        for row in re.split(r"\\\\", line):
-            row = _normalize_latex_array_cell(row.strip())
-            if row:
-                rows.append(row)
-    return rows
-
-
-def _normalize_latex_array_cell(value: str) -> str:
-    value = value.strip()
-    value = re.sub(r"^\\\s+", "", value)
-    value = re.sub(r"\\+$", "", value).strip()
-    return value
-
-
-def _format_chemical_expression(source: str) -> str:
-    expression = source.strip().replace("$", "")
-    expression = _replace_underset_text_ce(expression)
-    expression = re.sub(r"\\text\{([^{}]*)\}", r"\1", expression)
-    expression = re.sub(r"\\[a-zA-Z]+\{([^{}]*)\}", r"\1", expression)
-    expression = re.sub(r"\\[a-zA-Z]+", "", expression)
-    expression = _replace_chemical_arrows(expression)
-    expression = expression.replace(" v", " \u2193")
-    expression = expression.replace(" ^", " \u2191")
-    return _format_chemical_typography(expression)
-
-
-def _replace_underset_text_ce(source: str) -> str:
-    pattern = re.compile(
-        r"\\underset\{\\text\{(?P<label>[^{}]*)\}\}\{\\ce\{(?P<formula>[^{}]*)\}\}"
-    )
-
-    def replace(match: re.Match[str]) -> str:
-        formula = match.group("formula").strip()
-        label = match.group("label").strip()
-        return f"{formula} ({label})"
-
-    previous = None
-    value = source
-    while value != previous:
-        previous = value
-        value = pattern.sub(replace, value)
-    return value
-
-
-def _replace_chemical_arrows(source: str) -> str:
-    arrow_map = {
-        "<=>": "\u21cc",
-        "<->": "\u2194",
-        "->": "\u2192",
-        "<-": "\u2190",
-    }
-    pattern = re.compile(r"(<=>|<->|->|<-)(\[[^\]]*\])?(\[[^\]]*\])?")
-
-    def replace(match: re.Match[str]) -> str:
-        arrow = arrow_map[match.group(1)]
-        conditions = " ".join(group for group in match.groups()[1:] if group)
-        return f" {arrow} {conditions} "
-
-    return pattern.sub(replace, source)
-
-
-def _format_chemical_typography(source: str) -> str:
-    safe = escape(re.sub(r"\s+", " ", source).strip())
-    safe = re.sub(r"(\]|\)|[A-Za-z])\^?([0-9]*[+-])", r"\1<sup>\2</sup>", safe)
-    safe = re.sub(r"(\]|\))(\d+)(?![+-])", r"\1<sub>\2</sub>", safe)
-    safe = re.sub(r"([A-Z][a-z]?)(\d+)", r"\1<sub>\2</sub>", safe)
-    safe = safe.replace("\u21cc", '<span class="chem-arrow">\u21cc</span>')
-    safe = safe.replace("\u2194", '<span class="chem-arrow">\u2194</span>')
-    safe = safe.replace("\u2192", '<span class="chem-arrow">\u2192</span>')
-    safe = safe.replace("\u2190", '<span class="chem-arrow">\u2190</span>')
-    return safe
-
-
-def _replace_latex_command(
-    source: str,
-    command: str,
-    replace_func: Callable[[str], str],
-) -> str:
-    marker = f"\\{command}" + "{"
-    output: list[str] = []
-    pos = 0
-    while pos < len(source):
-        start = source.find(marker, pos)
-        if start == -1:
-            output.append(escape(source[pos:]))
-            break
-        output.append(escape(source[pos:start]))
-        inner, end = _extract_balanced_brace_content(source, start + len(marker) - 1)
-        if inner is None:
-            output.append(escape(source[start : start + len(marker)]))
-            pos = start + len(marker)
-            continue
-        output.append(replace_func(inner))
-        pos = end
-    return "".join(output)
-
-
-def _extract_balanced_brace_content(source: str, open_brace_index: int) -> tuple[str | None, int]:
-    if open_brace_index >= len(source) or source[open_brace_index] != "{":
-        return None, open_brace_index
-
-    depth = 0
-    pos = open_brace_index
-    while pos < len(source):
-        char = source[pos]
-        if char == "\\":
-            pos += 2
-            continue
-        if char == "{":
-            depth += 1
-        elif char == "}":
-            depth -= 1
-            if depth == 0:
-                return source[open_brace_index + 1 : pos], pos + 1
-        pos += 1
-    return None, open_brace_index
+    encoded = base64.b64encode(latex.encode("utf-8")).decode("ascii")
+    return f'<span data-mdtopdf-math="{encoded}" data-display="{display}"></span>'
 
 
 def _strip_latex_comments(content: str) -> str:

@@ -27,21 +27,20 @@ public API stable unless the user explicitly asks for a breaking change.
 ## CI Contract
 
 Daily CI lives in `.github/workflows/ci.yml`. It and the release workflow call
-`.github/workflows/tests.yml`; native setup is shared through
+`.github/workflows/tests.yml`; platform font setup is shared through
 `.github/actions/setup-native/action.yml`.
 
 - Runs on pushes to `main`, pull requests, and manual dispatch.
 - Tests Python 3.10, 3.11, 3.12, 3.13, and 3.14.
 - Also tests Python 3.12 on Windows and macOS.
-- Installs native WeasyPrint libraries plus the Linux font baseline before
-  installing the package.
+- Installs the Linux font baseline and prepares Chromium after installing the package.
 - Runs `mdtopdf doctor --render-check --json`.
 - Runs `python -m pytest tests/ -q`.
 - Builds and checks distributions with `python -m build` and
   `python -m twine check dist/*`.
-- Requires real Mermaid rendering on Linux/Python 3.12. Other matrix entries
-  skip the optional integration test when mmdc is absent. Use the runner's
-  system Chrome through `PUPPETEER_EXECUTABLE_PATH`; keep its sandbox enabled.
+- Requires real PDF, Mermaid, and KaTeX rendering on every matrix entry.
+  Linux uses system Chrome through `MDTOPDF_BROWSER_EXECUTABLE` for its
+  AppArmor sandbox profile; Windows/macOS install Playwright Chromium.
 - Rasterizes mixed CJK/digit PDFs with PDFium and checks visible digit pixels,
   including page counters. Uploads test PNGs/PDFs for review.
 - Installs the built wheel into a clean environment and runs
@@ -76,38 +75,19 @@ the command runs inside the repository root. Do not delete unrelated user files.
 
 ## Runtime Dependencies
 
-WeasyPrint needs native libraries outside the Python wheel.
+Chromium is the only rendering engine, controlled by Python Playwright.
+Resolution order: `MDTOPDF_BROWSER_EXECUTABLE`, legacy `PUPPETEER_EXECUTABLE_PATH`,
+installed Playwright Chromium, then system Chrome/Edge/Chromium. Invalid explicit
+paths must fail rather than fall back. Doctor and rendering use the same resolver.
+Install with `python -m playwright install chromium --no-shell` only if needed.
+Linux may need `python -m playwright install-deps chromium`.
+There is no separate Node.js, Mermaid CLI, MiniRacer, or WeasyPrint requirement.
 
-On Windows, the expected path is controlled through:
-
-```powershell
-$env:WEASYPRINT_DLL_DIRECTORIES = 'D:\Environment\msys64\mingw64\bin'
-```
-
-On Linux, install native libraries and the font baseline used by CI. Keep this
-baseline aligned with the workflow files:
-
-```shell
-apt-get update
-apt-get install -y --no-install-recommends \
-  fontconfig \
-  libcairo2 \
-  libffi-dev \
-  libgdk-pixbuf-2.0-0 \
-  libpango-1.0-0 \
-  libpangoft2-1.0-0 \
-  libharfbuzz-subset0 \
-  poppler-utils \
-  shared-mime-info \
-  fonts-dejavu-core \
-  fonts-liberation \
-  fonts-noto-cjk \
-  fonts-stix
-if apt-cache show fonts-cascadia-code >/dev/null 2>&1; then
-  apt-get install -y --no-install-recommends fonts-cascadia-code
-fi
-fc-cache -f
-```
+Keep browser sandboxing enabled. On Linux use a non-root account and working
+user-namespace/AppArmor policies. Do not auto-download on conversion or add an
+implicit no-sandbox fallback. Check the README and CI action for font packages.
+Document scripts are blocked during conversion, but images/styles/fonts may
+still access local/remote resources; this is not a network/filesystem sandbox.
 
 ## Font Policy
 
@@ -122,8 +102,7 @@ casually reorder `mdtopdf/themes/default.css` font stacks.
 - Code blocks prefer `Cascadia Mono` / `Cascadia Code`, then system monospace
   fallbacks.
 - Emoji spans use system emoji fonts. Linux should prefer monochrome
-  `Noto Emoji`; `Noto Color Emoji` is a fallback because PDF viewers can render
-  color emoji too small or misaligned.
+  `Noto Emoji`; `Noto Color Emoji` is a fallback pending renderer-specific visual verification.
 - `mdtopdf` may reference proprietary system font names in CSS, but must not
   bundle, download, or redistribute Microsoft font files.
 - Public Linux environments should use the open-font baseline: Liberation or
@@ -154,6 +133,9 @@ visual rendering through Chrome/PDFium or `pypdfium2`, especially for:
 - `README.md` is the English GitHub/PyPI long description.
 - `README_CN.md` is the Chinese GitHub entry point.
 - Keep commands in both READMEs consistent with the real CLI.
+- Also maintain `README.es-ES.md` when changing installation or runtime behavior.
+- Follow `docs/releasing.md` before a release; keep unreleased features distinct
+  from the current PyPI version.
 - The bundled skill is `mdtopdf/skills/SKILL.md`; README files should mention
   this path when describing Agent usage.
 - Do not add a Dockerfile unless the user explicitly asks for a maintained
@@ -169,4 +151,6 @@ visual rendering through Chrome/PDFium or `pypdfium2`, especially for:
   not replace existing output; without overwrite, existing files remain protected.
 - Add regression tests for fixes and include JSON usage errors, material render
   warnings, nested code blocks, and platform-independent resource resolution.
+- `convert -` reads UTF-8 stdin, requires a PDF output path, and uses the working
+  directory or `--base-url` for resources. Keep the existing file-input behavior.
 - Use `apply_patch` for manual edits.

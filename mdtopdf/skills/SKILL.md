@@ -1,110 +1,70 @@
 ---
 name: "mdtopdf"
-description: "Install and run mdtopdf, an agent-friendly Markdown-to-PDF CLI. Use when converting Markdown to PDF or HTML, checking WeasyPrint/mdtopdf runtime health, using Obsidian-style resources, custom CSS, KaTeX, Mermaid, fonts, or JSON diagnostics."
+description: "Convert Markdown to PDF or static HTML with mdtopdf. Use for local document export, Obsidian resources, custom CSS, math, Mermaid, or diagnosing the rendering environment."
 ---
 
 # mdtopdf
 
-## Names
+Install package `agent-markdown-pdf`; the command and Python import are `mdtopdf`.
 
-- PyPI package: `agent-markdown-pdf`
-- CLI command: `mdtopdf`
-- Python import: `mdtopdf`
-
-## Basic Flow
-
-Install or upgrade if the command is missing:
+## Setup
 
 ```shell
-python -m pip install -U agent-markdown-pdf
+python -m pip install "agent-markdown-pdf>=0.3.0"
+mdtopdf doctor --render-check --json
 ```
 
-Check the runtime before converting on a new machine:
+Browser selection: `MDTOPDF_BROWSER_EXECUTABLE`, legacy `PUPPETEER_EXECUTABLE_PATH`,
+installed Playwright Chromium, then system Chrome/Edge/Chromium. Invalid explicit
+paths fail without fallback. If none is found, install with
+`python -m playwright install chromium --no-shell` during setup.
+Linux may also need `python -m playwright install-deps chromium`. Run as a
+non-root user with browser sandbox support. Do not disable the sandbox or
+install browsers during conversion retries.
+
+Fonts come from the environment. On Linux use Liberation/DejaVu for Latin,
+Noto Sans CJK SC for Chinese, and Cascadia or an available monospace font for
+code. Follow the README for emoji and platform details. Do not download
+Microsoft fonts. Mermaid and KaTeX are bundled; no separate mmdc, npm, or
+WeasyPrint installation is needed.
+
+## Updates
+
+Update only when requested, using the original environment and installation method.
+For pip-installed releases: `python -m pip install --upgrade agent-markdown-pdf`,
+then `python -m mdtopdf --version`. Keep pipx/uv tool and source installs under
+their original manager/checkout. Do not replace pinned versions during conversion.
+For 0.3.0+, rerun `doctor --render-check --json` after an upgrade; follow browser
+setup if Playwright needs a new managed browser. There is no `mdtopdf update`.
+
+## Convert
 
 ```shell
-mdtopdf doctor --json
+mdtopdf convert INPUT.md -o OUTPUT.pdf --json
 ```
 
-Convert Markdown to PDF:
+For piped UTF-8 Markdown, use `mdtopdf convert - -o OUTPUT.pdf --json`.
+Output is required; relative assets use the working directory or `--base-url`.
+Use `--title` to replace the default `stdin` title/header. Empty input fails.
+In Windows PowerShell 5.1, set `$OutputEncoding = [System.Text.UTF8Encoding]::new($false)`
+before piping non-ASCII text. The `html` command still takes a file path.
 
-```shell
-mdtopdf convert INPUT.md -o OUTPUT.pdf --overwrite --json
-```
+Add `--overwrite` only when replacing the output is intended. It also allows
+input and output to be the same file. Read `warnings` even when `ok` is true.
+Use `--strict` to reject warnings without replacing an existing output.
 
-Use HTML preview only when layout needs debugging:
+- `--css print.css`: custom styles and font-family/@font-face rules.
+- `--base-url PATH_OR_URL`: base for relative images, fonts, and CSS resources.
+- `--resource-dir PATH`: lookup directory for bare image names/Obsidian embeds.
+- `--title TEXT`, `--header TEXT`, `--footer TEXT`: document metadata/page chrome.
+- `--no-header`, `--no-footer`: remove page chrome.
+- `--unsafe-html`: trusted raw HTML only; conversion does not execute document JS.
 
-```shell
-mdtopdf html INPUT.md -o preview.html --overwrite --json
-mdtopdf convert INPUT.md -o OUTPUT.pdf --overwrite --json
-```
+For layout debugging, run `mdtopdf html INPUT.md -o preview.html --json`.
+Math and Mermaid are already rendered in the exported HTML; plain HTML export
+does not verify image loading. Inspect the final PDF for pagination and glyphs.
 
-## Useful Options
-
-- `--base-url PATH_OR_URL`: resolve relative images and links.
-- `--resource-dir PATH`: resolve Obsidian-style image names such as `![[image.png]]`.
-- `--css print.css`: apply custom print CSS.
-- `--unsafe-html`: allow raw HTML only for trusted local Markdown.
-- `--json`: prefer this for agent workflows.
-- `--strict`: reject warnings without replacing existing output.
-
-## Environment
-
-`mdtopdf` uses WeasyPrint. If PDF export fails, run:
-
-```shell
-mdtopdf doctor --json
-```
-
-Windows usually needs MSYS2 Pango/GLib/Cairo DLLs:
-
-```powershell
-pacman -S mingw-w64-x86_64-pango
-setx WEASYPRINT_DLL_DIRECTORIES "D:\Environment\msys64\mingw64\bin"
-```
-
-Linux containers need native libraries and fonts:
-
-```shell
-apt-get update
-apt-get install -y --no-install-recommends \
-  fontconfig \
-  libcairo2 \
-  libffi-dev \
-  libgdk-pixbuf-2.0-0 \
-  libpango-1.0-0 \
-  libpangoft2-1.0-0 \
-  shared-mime-info \
-  fonts-liberation \
-  fonts-dejavu-core \
-  fonts-noto-cjk \
-  fonts-stix
-fc-cache -f
-```
-
-For emoji-heavy documents on Linux, prefer a monochrome emoji font such as
-Noto Emoji. `fonts-noto-color-emoji` is a fallback, but it can render too small
-or misaligned in PDF viewers.
-
-Install optional support only when needed:
-
-```shell
-npm install -g @mermaid-js/mermaid-cli
-```
-
-Use Cascadia Code for closer default code-block styling when available:
-
-```shell
-apt-get install -y --no-install-recommends fonts-cascadia-code
-```
-
-## Failure Handling
-
-- Read JSON errors first; do not guess from stderr alone.
-- Also read `warnings` on success. Exit codes: 0 success, 1 runtime/conversion/strict failure, 2 invalid arguments.
-- Use `doctor --render-check --json` for a real PDF and optional Mermaid smoke test; basic doctor only probes availability.
-- If conversion fails with WeasyPrint, Pango, GLib, Cairo, or DLL errors, fix the items reported by `doctor --json`.
-- If images are missing, add `--base-url` or `--resource-dir`.
-- If Mermaid diagrams do not render, install local `mmdc`; `mdtopdf` does not call Mermaid.ink or auto-download Mermaid CLI.
-- If CJK text renders as boxes, install a CJK font such as Noto CJK or provide the intended system font.
-- If digits disappear in Chrome/PDFium output, verify the runtime has Latin fonts such as Liberation Sans or DejaVu Sans and render a PDFium screenshot to confirm.
-- Do not look for Pandoc; this CLI uses `markdown-it-py` and WeasyPrint.
+Failures return an error message and, for browser failures, `error_code` and
+`hint`. Use `doctor --render-check --json` after repairing the environment.
+Exit codes: 0 success, 1 runtime/strict failure, 2 invalid arguments.
+Images, fonts, and CSS may access local/remote resources: isolate untrusted input.

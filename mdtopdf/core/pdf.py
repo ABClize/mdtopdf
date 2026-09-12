@@ -45,7 +45,7 @@ def convert_markdown_file(
     ``markdown_file_to_pdf`` helper. It reads UTF-8 Markdown, applies the
     Obsidian-compatible Markdown-to-HTML renderer, resolves relative assets from
     ``base_url`` or the input file's directory, and writes the final PDF with
-    WeasyPrint.
+    Chromium.
 
     Args:
         input_path: Source Markdown file.
@@ -72,7 +72,7 @@ def convert_markdown_file(
         FileNotFoundError: If ``input_path`` does not exist.
         IsADirectoryError: If ``input_path`` is a directory.
         FileExistsError: If the output exists and ``overwrite`` is false.
-        RuntimeError: If WeasyPrint or its native dependencies cannot load.
+        RuntimeError: If Chromium or its runtime dependencies cannot load.
     """
 
     source = Path(input_path).expanduser()
@@ -92,6 +92,7 @@ def convert_markdown_file(
     resolved_resource_dir = resolve_resource_dir(resource_dir)
     rendered = render_markdown_to_html(
         markdown_text,
+        _defer_browser=True,
         title=title or source.stem,
         theme=theme,
         custom_css=custom_css,
@@ -128,12 +129,12 @@ def convert_markdown_file(
         "page_numbers": bool(include_page_footer and page_numbers),
         "font_check": summarize_font_usage(font_usage),
         "warnings": warnings,
-        "method": "markdown-it-py+weasyprint",
+        "method": "markdown-it-py+chromium",
     }
 
 
 def resolve_base_url(base_url: str | Path | None, source: Path) -> str:
-    """Resolve the effective WeasyPrint base URL for a Markdown source file."""
+    """Resolve the effective Chromium base URL for a Markdown source file."""
 
     if base_url is None:
         return str(source.resolve().parent)

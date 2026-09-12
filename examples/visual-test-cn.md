@@ -219,13 +219,13 @@ $$
 
 ## 10. Mermaid
 
-如果本机安装了 `mmdc`，下面的 Mermaid 会渲染成 SVG；否则会保留为代码块，便于确认降级路径。
+下面的 Mermaid 由内置资源在 Chromium 中渲染成 SVG，无需另装 Mermaid CLI。
 
 ```mermaid
 flowchart LR
     A[Markdown] --> B[markdown-it-py]
     B --> C[HTML + CSS]
-    C --> D[WeasyPrint]
+    C --> D[Chromium]
     D --> E[PDF]
 ```
 
@@ -233,7 +233,7 @@ flowchart LR
 sequenceDiagram
     participant U as User
     participant C as CLI
-    participant W as WeasyPrint
+    participant W as Chromium
     U->>C: convert input.md
     C->>C: render Markdown to HTML
     C->>W: write_pdf()
