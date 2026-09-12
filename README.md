@@ -41,21 +41,10 @@ command-line interface where the style can be defined up front.
 
 ## Quick start
 
-> This README describes **0.3.0, in preparation**. PyPI currently provides 0.2.2
-> with the previous renderer. Browser discovery, stdin conversion, and the
-> Chromium workflow below require the development version until 0.3.0 is released.
-
-Try the development version in a virtual environment:
+Install from PyPI in your Python environment:
 
 ```shell
-python -m pip install "git+https://github.com/ABClize/mdtopdf.git@feature/chromium-renderer"
-```
-
-Install the published release from PyPI (0.2.2; use its
-[versioned README](https://github.com/ABClize/mdtopdf/blob/v0.2.2/README.md)):
-
-```shell
-python -m pip install agent-markdown-pdf
+python -m pip install "agent-markdown-pdf>=0.3.0"
 ```
 
 The PyPI distribution is `agent-markdown-pdf`; it installs the `mdtopdf` command.
@@ -68,7 +57,7 @@ intentionally different from the command name.
 | Run the CLI | `mdtopdf` |
 | Import in Python | `mdtopdf` |
 
-For the development version, check the machine before the first conversion:
+Check the machine before the first conversion:
 
 ```shell
 mdtopdf doctor --render-check --json
@@ -88,7 +77,7 @@ mdtopdf convert report.md -o report.pdf --overwrite
 Try the bundled visual test document:
 
 ```shell
-git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
+git clone https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell
@@ -436,7 +425,7 @@ content when opened elsewhere.
 ## Development
 
 ```shell
-git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
+git clone https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell

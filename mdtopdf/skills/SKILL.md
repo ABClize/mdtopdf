@@ -9,11 +9,8 @@ Install package `agent-markdown-pdf`; the command and Python import are `mdtopdf
 
 ## Setup
 
-This guide targets 0.3.0 (in preparation), not the published 0.2.x renderer.
-Until release, install the development branch shown in the README.
-
 ```shell
-python -m pip install "git+https://github.com/ABClize/mdtopdf.git@feature/chromium-renderer"
+python -m pip install "agent-markdown-pdf>=0.3.0"
 mdtopdf doctor --render-check --json
 ```
 

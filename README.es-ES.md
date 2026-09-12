@@ -40,21 +40,10 @@ Los agentes son buenos escribiendo Markdown. El problema es la transferencia: lo
 
 ## Inicio rápido
 
-> Este README describe **0.3.0, en preparación**. PyPI todavía ofrece 0.2.2
-> con el motor anterior. Las funciones de Chromium y stdin requieren la versión
-> de desarrollo hasta que se publique 0.3.0.
-
-Pruebe la versión de desarrollo en un entorno virtual:
+Instale desde PyPI en su entorno de Python:
 
 ```shell
-python -m pip install "git+https://github.com/ABClize/mdtopdf.git@feature/chromium-renderer"
-```
-
-Instalación de la versión publicada (0.2.2; consulte su
-[README](https://github.com/ABClize/mdtopdf/blob/v0.2.2/README.md)):
-
-```shell
-python -m pip install agent-markdown-pdf
+python -m pip install "agent-markdown-pdf>=0.3.0"
 ```
 
 La distribución en PyPI es `agent-markdown-pdf`; instala el comando `mdtopdf`. No utilice `mdtopdf` como nombre del paquete en PyPI; el nombre de la distribución es intencionalmente distinto al del comando.
@@ -65,7 +54,7 @@ La distribución en PyPI es `agent-markdown-pdf`; instala el comando `mdtopdf`. 
 | Ejecutar la CLI | `mdtopdf` |
 | Importar en Python | `mdtopdf` |
 
-Verificar el entorno de desarrollo antes de la primera conversión:
+Verificar el entorno antes de la primera conversión:
 
 ```shell
 mdtopdf doctor --render-check --json
@@ -85,7 +74,7 @@ mdtopdf convert report.md -o report.pdf --overwrite
 Pruebe el documento de prueba visual incluido:
 
 ```shell
-git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
+git clone https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell
@@ -392,7 +381,7 @@ al abrirlo fuera de la conversión.
 ## Desarrollo
 
 ```shell
-git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
+git clone https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell

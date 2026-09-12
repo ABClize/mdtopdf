@@ -39,19 +39,10 @@ Agent 很擅长写 Markdown，但是它用各种方式导出的pdf样式无法�
 
 ## 快速上手
 
-> 本文介绍的是**准备中的 0.3.0**。PyPI 当前版本仍为 0.2.2，使用旧渲染后端。
-> 下文的浏览器自动发现、管道输入和 Chromium 渲染流程，需要安装开发版才能使用。
-
-在虚拟环境中试用开发版：
+在所用的 Python 环境中，从 PyPI 安装：
 
 ```powershell
-python -m pip install "git+https://github.com/ABClize/mdtopdf.git@feature/chromium-renderer"
-```
-
-安装 PyPI 已发布版（0.2.2，请参考[对应版本文档](https://github.com/ABClize/mdtopdf/blob/v0.2.2/README_CN.md)）：
-
-```powershell
-python -m pip install agent-markdown-pdf
+python -m pip install "agent-markdown-pdf>=0.3.0"
 ```
 
 PyPI 发行包叫 `agent-markdown-pdf`，安装后提供的命令仍然是 `mdtopdf`。
@@ -63,7 +54,7 @@ PyPI 发行包叫 `agent-markdown-pdf`，安装后提供的命令仍然是 `mdto
 | 执行 CLI | `mdtopdf` |
 | Python import | `mdtopdf` |
 
-开发版第一次转换前，检查本机环境：
+第一次转换前，检查本机环境：
 
 ```powershell
 mdtopdf doctor --render-check --json
@@ -82,7 +73,7 @@ mdtopdf convert report.md -o report.pdf --overwrite
 跑仓库里的测试文档：
 
 ```powershell
-git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
+git clone https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell
@@ -399,7 +390,7 @@ Emoji 仍使用系统字体，现有 Linux 首选是单色 Noto Emoji，Noto Col
 ## 开发与发布检查
 
 ```powershell
-git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
+git clone https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell
