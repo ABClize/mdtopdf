@@ -356,6 +356,14 @@ Emoji are rendered through the system emoji font. On Linux, prefer monochrome
 many distro package managers and is safe to use as a fallback, but color emoji
 often render too small or misaligned in WeasyPrint/Pango/Cairo/PDFium output.
 
+On macOS, install Pango with Homebrew:
+
+```shell
+brew install pango
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+mdtopdf doctor --render-check --json
+```
+
 On Windows, install the native libraries separately. A common MSYS2 setup is:
 
 ```powershell
@@ -373,6 +381,12 @@ if MSYS2 is installed somewhere else:
 
 ```powershell
 setx WEASYPRINT_DLL_DIRECTORIES "C:\msys64\mingw64\bin"
+```
+
+`setx` applies to new terminals. To use the current PowerShell session as well:
+
+```powershell
+$env:WEASYPRINT_DLL_DIRECTORIES = "C:\msys64\mingw64\bin"
 ```
 
 Run this after installation. The JSON output also reports whether recommended

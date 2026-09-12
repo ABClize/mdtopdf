@@ -1,6 +1,8 @@
 from html import unescape
 import json
+import os
 import re
+import stat
 from pathlib import Path, PurePosixPath
 from importlib import resources
 
@@ -163,6 +165,40 @@ def test_same_path_overwrite_still_supported(tmp_path):
     result = convert_markdown_file(source, output_path=source, overwrite=True)
     assert result['ok']
     assert source.read_bytes().startswith(b'%PDF-')
+
+
+@pytest.mark.skipif(os.name != 'posix', reason='POSIX file mode contract')
+@pytest.mark.parametrize('existing', [False, True])
+def test_atomic_pdf_output_preserves_file_mode(tmp_path, existing):
+    output = tmp_path / 'report.pdf'
+    reference = tmp_path / 'reference'
+    reference.write_bytes(b'normal file permissions')
+    expected = stat.S_IMODE(reference.stat().st_mode)
+    if existing:
+        output.write_bytes(b'old')
+        output.chmod(0o640)
+        expected = 0o640
+
+    markdown_to_pdf('# Report', output, overwrite=existing)
+
+    assert stat.S_IMODE(output.stat().st_mode) == expected
+    assert not list(tmp_path.glob('.mdtopdf-*'))
+
+
+def test_failed_pdf_write_preserves_output_and_cleans_temporary_files(monkeypatch, tmp_path):
+    from weasyprint import HTML
+
+    def fail(self, target, **kwargs):
+        Path(target).write_bytes(b'incomplete')
+        raise RuntimeError('Render failed')
+
+    monkeypatch.setattr(HTML, 'write_pdf', fail)
+    output = tmp_path / 'report.pdf'
+    output.write_bytes(b'previous valid output')
+    with pytest.raises(RuntimeError, match='Render failed'):
+        markdown_to_pdf('# Report', output, overwrite=True)
+    assert output.read_bytes() == b'previous valid output'
+    assert not list(tmp_path.glob('.mdtopdf-*'))
 
 
 def test_footer_uses_document_language():

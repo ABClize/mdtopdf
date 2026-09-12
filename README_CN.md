@@ -338,6 +338,14 @@ Emoji 走系统 emoji 字体。Linux 上更推荐单色 `Noto Emoji`，PDF 版�
 emoji 稳。`Noto Color Emoji` 更容易通过发行版包管理器安装，也可以作为 fallback，
 但在 WeasyPrint/Pango/Cairo/PDFium 这条链路里经常出现过小或基线偏移的问题。
 
+macOS 可以通过 Homebrew 安装 Pango：
+
+```shell
+brew install pango
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+mdtopdf doctor --render-check --json
+```
+
 Windows 上常见的 MSYS2 安装方式：
 
 ```powershell
@@ -354,6 +362,12 @@ pacman -S mingw-w64-x86_64-pango
 
 ```powershell
 setx WEASYPRINT_DLL_DIRECTORIES "C:\msys64\mingw64\bin"
+```
+
+`setx` 对新打开的终端生效。要在当前 PowerShell 窗口继续使用，再运行：
+
+```powershell
+$env:WEASYPRINT_DLL_DIRECTORIES = "C:\msys64\mingw64\bin"
 ```
 
 完成后运行。JSON 结果里也会显示推荐的 Latin、CJK、emoji、等宽代码和数学 fallback 字体是否存在：
