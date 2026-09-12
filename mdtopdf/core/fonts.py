@@ -76,6 +76,8 @@ RECOMMENDED_FONT_GROUPS = {
             "Noto Sans Mono CJK SC",
             "Liberation Mono",
             "DejaVu Sans Mono",
+            "Menlo",
+            "Monaco",
         ),
     },
     "math": {
