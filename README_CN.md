@@ -283,11 +283,21 @@ mdtopdf doctor --json
 检查是否找到 Mermaid CLI。要确认它能实际渲染，运行
 `mdtopdf doctor --render-check --json`。
 
+如果 Linux 报 `No usable sandbox`，需要配置符合宿主机沙箱策略的浏览器。
+例如机器上已安装系统版 Chrome 时：
+
+```shell
+export PUPPETEER_EXECUTABLE_PATH="$(command -v google-chrome)"
+mdtopdf doctor --render-check --json
+```
+
+保留浏览器沙箱，具体见 [Puppeteer 的 Linux 排障说明](https://pptr.dev/troubleshooting#issues-with-apparmor-on-ubuntu)。
+
 ## 平台依赖
 
 `mdtopdf` 需要 Python 3.10+。Python 依赖会从 PyPI 安装，包括
 `click`、`markdown-it-py`、`mdit-py-plugins`、`pygments`、`latex2mathml`、
-`matplotlib`、`mini-racer`、`weasyprint`。
+`matplotlib`、`mini-racer`、`tinycss2`、`fonttools`、`weasyprint`。
 
 WeasyPrint 还需要 Pango、GLib、Cairo 等原生库。Linux 和 macOS 通常可以通过
 系统包管理器安装。Windows 需要额外处理一次。
@@ -298,12 +308,16 @@ WeasyPrint 还需要 Pango、GLib、Cairo 等原生库。Linux 和 macOS 通常�
 Linux 推荐使用 `Noto Sans CJK SC` 这类开源 CJK 字体，不再把微软雅黑作为 Linux
 运行环境目标。
 
-Linux 容器或 Agent 沙箱里，先安装 fontconfig 和默认主题需要的基础字体。
-推荐的开源组合是：
+Debian/Ubuntu 容器或 Agent 环境可以安装下面这组原生库和开源字体，
+与 CI 的基础环境保持一致：
 
 ```shell
+sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   fontconfig \
+  libcairo2 libffi-dev libgdk-pixbuf-2.0-0 \
+  libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+  poppler-utils shared-mime-info \
   fonts-liberation \
   fonts-dejavu-core \
   fonts-noto-cjk \

@@ -46,6 +46,26 @@ def test_nested_code_does_not_disable_surrounding_obsidian():
     assert 'hidden' not in rendered.body
 
 
+@pytest.mark.parametrize(('source', 'expected'), [
+    ('```\ncode\n```\n>\ncontinued\n', '```\ncode\n```\n>\n> continued\n'),
+    ('>\n```\ncode\n```\nplain\n', '>\n```\ncode\n```\nplain\n'),
+    ('```\ncode\n```\n- item\n\t\t\t- child\n', '```\ncode\n```\n- item\n  - child\n'),
+])
+def test_code_protection_preserves_neighboring_block_boundaries(source, expected):
+    assert obsidian.preprocess_obsidian_markdown(source) == expected
+
+
+@pytest.mark.parametrize('source', [
+    '```\ncode\n```', '```\r\ncode\r\n```\r\n',
+    '> ```\n> code\n> ```\n\n- ```\n  next\n  ```\n',
+])
+def test_code_protection_round_trip(source):
+    from mdtopdf.core.inline import protect_code_blocks, restore_code_blocks
+
+    protected, replacements = protect_code_blocks(source)
+    assert restore_code_blocks(protected, replacements) == source
+
+
 @pytest.mark.parametrize('target', ['charts/logo.png', r'charts\logo.png', 'charts%2Flogo.png'])
 def test_resource_subdirectory_is_not_bare_on_posix(monkeypatch, target):
     monkeypatch.setattr(obsidian, 'Path', PurePosixPath)

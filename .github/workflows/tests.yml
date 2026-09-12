@@ -38,7 +38,16 @@ jobs:
           package-manager-cache: false
       - name: Install real Mermaid renderer
         if: env.MDTOPDF_REQUIRE_MERMAID == '1'
-        run: npm install -g @mermaid-js/mermaid-cli@11.15.0
+        shell: bash
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+        run: |
+          # The system Chrome has an AppArmor profile allowing its sandbox;
+          # Puppeteer's downloaded Chrome does not on Ubuntu 24.04 runners.
+          browser="$(command -v google-chrome)"
+          "$browser" --version
+          echo "PUPPETEER_EXECUTABLE_PATH=$browser" >> "$GITHUB_ENV"
+          npm install -g @mermaid-js/mermaid-cli@11.15.0
       - name: Install package
         run: |
           python -m pip install --upgrade pip

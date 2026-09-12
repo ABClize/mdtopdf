@@ -25,7 +25,10 @@ def protect_code_blocks(markdown_text: str) -> tuple[str, dict[str, str]]:
             continue
         start, end = token.map
         original = "".join(lines[start:end])
-        marker = f"{prefix}X{start}END"
+        # Keep a fenced block boundary so line-based preprocessors cannot join
+        # the next line to the marker or treat it as a lazy quote continuation.
+        newline = "\r\n" if original.endswith("\r\n") else "\n" if original.endswith("\n") else ""
+        marker = f"```{prefix}X{start}END\n```{newline}"
         replacements[marker] = original
         lines[start:end] = [marker]
     return "".join(lines), replacements

@@ -40,7 +40,8 @@ Daily CI lives in `.github/workflows/ci.yml`. It and the release workflow call
 - Builds and checks distributions with `python -m build` and
   `python -m twine check dist/*`.
 - Requires real Mermaid rendering on Linux/Python 3.12. Other matrix entries
-  skip the optional integration test when mmdc is absent.
+  skip the optional integration test when mmdc is absent. Use the runner's
+  system Chrome through `PUPPETEER_EXECUTABLE_PATH`; keep its sandbox enabled.
 - Rasterizes mixed CJK/digit PDFs with PDFium and checks visible digit pixels,
   including page counters. Uploads test PNGs/PDFs for review.
 - Installs the built wheel into a clean environment and runs
@@ -95,6 +96,7 @@ apt-get install -y --no-install-recommends \
   libgdk-pixbuf-2.0-0 \
   libpango-1.0-0 \
   libpangoft2-1.0-0 \
+  libharfbuzz-subset0 \
   poppler-utils \
   shared-mime-info \
   fonts-dejavu-core \

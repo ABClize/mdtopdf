@@ -299,11 +299,21 @@ npm install -g @mermaid-js/mermaid-cli
 `npx` during conversion. Run `mdtopdf doctor --json` to check whether Mermaid
 CLI is on PATH. Use `mdtopdf doctor --render-check --json` to test actual rendering.
 
+If Linux reports `No usable sandbox`, configure a browser permitted by the
+host's sandbox policy. For an installed system Chrome, for example:
+
+```shell
+export PUPPETEER_EXECUTABLE_PATH="$(command -v google-chrome)"
+mdtopdf doctor --render-check --json
+```
+
+Keep the browser sandbox enabled; see [Puppeteer's Linux troubleshooting](https://pptr.dev/troubleshooting#issues-with-apparmor-on-ubuntu).
+
 ## Platform notes
 
 `mdtopdf` requires Python 3.10+ and installs its Python dependencies from PyPI:
 `click`, `markdown-it-py`, `mdit-py-plugins`, `pygments`, `latex2mathml`,
-`matplotlib`, `mini-racer`, and `weasyprint`.
+`matplotlib`, `mini-racer`, `tinycss2`, `fonttools`, and `weasyprint`.
 
 WeasyPrint also needs native libraries such as Pango, GLib, and Cairo. Linux
 and macOS package managers usually provide them through system packages.
@@ -313,12 +323,16 @@ listed before CJK fonts so ASCII digits, dates, versions, and page numbers are
 not embedded into CJK font subsets that some Chrome/PDFium renderers handle
 poorly. Chinese text still falls back to the CJK side of the stack.
 
-For Linux containers or agent sandboxes, use open fonts that can be installed
-from the distribution package manager. The recommended baseline is:
+For Debian/Ubuntu containers or agent environments, install the native libraries
+and open-font baseline used by CI:
 
 ```shell
+sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   fontconfig \
+  libcairo2 libffi-dev libgdk-pixbuf-2.0-0 \
+  libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+  poppler-utils shared-mime-info \
   fonts-liberation \
   fonts-dejavu-core \
   fonts-noto-cjk \
