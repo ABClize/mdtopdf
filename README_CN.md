@@ -98,6 +98,20 @@ mdtopdf convert report.md -o report.pdf --overwrite --json
 `convert --json` 会返回输入路径、输出路径、文件大小、主题、字体检查摘要、warning 和渲染方式。转换失败时，
 JSON 里会有结构化错误，Agent 可以直接把命令、原因和下一步修复建议交代清楚。
 
+命令成功不代表内容一定完整：图片缺失、字体回退、Mermaid 没有渲染等情况都会记录在
+`warnings` 里。不接受这些降级时，可以开启严格模式：
+
+```powershell
+mdtopdf convert report.md -o report.pdf --overwrite --strict --json
+mdtopdf doctor --render-check --json
+```
+
+`--strict` 遇到诊断警告就停止，不替换已有输出。HTML 文件预览也支持这个参数，
+但预览不会加载图片或运行 PDF 引擎。`doctor --render-check` 会实际生成一份小 PDF，
+并在装有 Mermaid 时试着渲染图表；它用于确认环境能运行，不保证不同机器上的版式完全一致。
+退出码：`0` 表示成功，`1` 表示转换、运行环境或严格检查失败，`2` 表示命令参数有误。
+`doctor` 的 `ok` 为 false 时返回 `1`；仅缺少可选字体或 Mermaid 不会让基础检查失败。
+
 ## 输出效果
 
 下面 6 张图来自 `examples/visual-test-cn.md`，能看到标题、Callout、表格、代码、
@@ -118,7 +132,7 @@ Markdown -> markdown-it-py HTML -> theme/custom CSS -> WeasyPrint PDF
 ```
 
 Mermaid 是可选扩展。本地有 `mmdc` 时，Mermaid 代码块会渲染成 SVG；没有
-`mmdc` 时，仍会生成pdf，但Mermaid部分会保留为高亮代码块。
+`mmdc` 时，仍会生成 PDF，但 Mermaid 部分会保留为高亮代码块，并返回警告。
 
 ## 功能特性
 
@@ -190,6 +204,10 @@ mdtopdf convert report.md -o report.pdf --css print.css --base-url .
 ```
 
 导出时，`mdtopdf` 会检查最终 CSS 里的字体栈。字体缺失不会阻断 PDF 生成，但会在命令行 warning 和 JSON 的 `warnings` 字段里提示。
+自定义 CSS 的首选字体缺失时，即使有备用字体，也会提示。对于本地 `@font-face`，
+还会检查字体文件是否可读、是否覆盖文档中的中文，不能只写一个字体名就算检查通过。
+静态检查不会下载远程字体，会将其标为未验证。字体检查不能代替实际查看 PDF；
+需要拒绝警告时使用 `--strict`。
 
 输出 JSON：
 
@@ -204,6 +222,9 @@ mdtopdf themes list --json
 ```powershell
 mdtopdf convert trusted.md -o trusted.pdf --unsafe-html
 ```
+
+HTML 过滤不等于文件系统或网络沙箱：图片和 CSS 仍可引用本地文件或远程地址。
+处理不可信文档时，应在限制了文件访问和网络的环境中运行。
 
 ## Python API
 
@@ -259,7 +280,8 @@ npm install -g @mermaid-js/mermaid-cli
 mdtopdf doctor --json
 ```
 
-检查 Mermaid 渲染是否可用。
+检查是否找到 Mermaid CLI。要确认它能实际渲染，运行
+`mdtopdf doctor --render-check --json`。
 
 ## 平台依赖
 

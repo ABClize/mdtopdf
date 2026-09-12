@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import sys
 import types
+from importlib import resources
 from urllib.parse import quote
 
 import pytest
@@ -953,7 +954,7 @@ def test_page_header_footer_css_defaults_to_title_and_page_numbers():
     assert 'content: "My Report";' in rendered.css
     assert page_margin_css.count("vertical-align: middle;") == 2
     assert "@bottom-center" in rendered.css
-    assert 'content: "第 " counter(page) " 页 / 共 " counter(pages) " 页";' in rendered.css
+    assert 'content: "Page " counter(page) " of " counter(pages);' in rendered.css
 
 
 def test_page_header_footer_can_be_disabled_or_overridden():
@@ -1016,17 +1017,20 @@ def test_custom_css_is_appended_after_theme_and_pygments():
     assert merged.index(".highlight") < merged.index(custom_css)
 
 
-def test_css_font_usage_accepts_font_face_and_warns_missing(monkeypatch):
+def test_css_font_usage_accepts_font_face_and_warns_missing(monkeypatch, tmp_path):
     monkeypatch.setattr(
         fonts_core,
         "available_font_names",
         lambda: {"Noto Sans SC", "Liberation Mono", "STIXGeneral"},
     )
 
+    font = resources.files("mdtopdf").joinpath("vendor/katex/dist/fonts/KaTeX_Main-Regular.woff2")
+    (tmp_path / "report.woff2").write_bytes(font.read_bytes())
     result = fonts_core.inspect_css_font_usage(
         '@font-face { font-family: "Report Sans"; src: url("report.woff2"); }\n'
         ':root { font-family: "Report Sans", "Noto Sans SC", sans-serif; }\n'
-        'h2 { font-family: "Missing Display"; }\n'
+        'h2 { font-family: "Missing Display"; }\n',
+        base_url=str(tmp_path),
     )
 
     assert result["ok"] is False

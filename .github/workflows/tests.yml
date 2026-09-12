@@ -1,0 +1,87 @@
+name: Test suite
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
+    env:
+      PYTHONUTF8: "1"
+      MDTOPDF_REQUIRE_MERMAID: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12' && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-native
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - uses: actions/setup-node@v7
+        if: env.MDTOPDF_REQUIRE_MERMAID == '1'
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Install real Mermaid renderer
+        if: env.MDTOPDF_REQUIRE_MERMAID == '1'
+        run: npm install -g @mermaid-js/mermaid-cli@11.15.0
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Environment and render probes
+        timeout-minutes: 3
+        run: python -m mdtopdf doctor --render-check --json
+      - name: Run tests including PDFium raster checks
+        timeout-minutes: 8
+        run: python -m pytest tests/ -q --basetemp test-output
+      - name: Upload visual test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render-checks-${{ matrix.os }}-${{ matrix.python-version }}
+          path: |
+            test-output/**/*.png
+            test-output/**/*.pdf
+          if-no-files-found: ignore
+
+  wheel:
+    name: Installed wheel smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-native
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Build and check distributions
+        run: |
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Install the wheel into a clean environment
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-env"
+          "$RUNNER_TEMP/wheel-env/bin/python" -m pip install dist/*.whl
+      - name: Exercise installed wheel outside the checkout
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-env/bin/python" "$GITHUB_WORKSPACE/scripts/wheel_smoke.py"

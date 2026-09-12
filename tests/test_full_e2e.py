@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 try:
     import tomllib
 except ModuleNotFoundError:
@@ -14,6 +16,8 @@ except ModuleNotFoundError:
 
 from mdtopdf import __version__, markdown_file_to_html, markdown_file_to_pdf, markdown_to_pdf
 from mdtopdf.core.pdf import convert_markdown_file
+from mdtopdf.core.markdown import render_markdown_to_html
+from mdtopdf.core.mermaid import find_mermaid_backend
 
 
 SAMPLE_MARKDOWN = r"""# Release Notes
@@ -47,12 +51,11 @@ $$
 
 def _resolve_cli(name: str):
     force = os.environ.get("MDTOPDF_FORCE_INSTALLED", "").strip() == "1"
-    path = shutil.which(name)
-    if path:
-        print(f"[_resolve_cli] Using installed command: {path}")
-        return [path]
     if force:
-        raise RuntimeError(f"{name} not found in PATH. Install with: python -m pip install -e .")
+        path = shutil.which(name)
+        if not path:
+            raise RuntimeError(f"{name} not found in PATH. Install with: python -m pip install -e .")
+        return [path]
     print(f"[_resolve_cli] Falling back to: {sys.executable} -m mdtopdf")
     return [sys.executable, "-m", "mdtopdf"]
 
@@ -131,6 +134,10 @@ def test_public_markdown_text_api_generates_obsidian_compatible_pdf(tmp_path):
 
 
 def test_python_api_generates_mermaid_pdf(tmp_path):
+    if find_mermaid_backend() is None:
+        if os.environ.get("MDTOPDF_REQUIRE_MERMAID") == "1":
+            pytest.fail("CI requires real Mermaid rendering, but mmdc was not found.")
+        pytest.skip("Optional Mermaid CLI is not installed.")
     source = tmp_path / "diagram.md"
     output = tmp_path / "diagram.pdf"
     source.write_text(
@@ -145,6 +152,10 @@ graph TD
         encoding="utf-8",
     )
 
+    rendered = render_markdown_to_html(source.read_text(encoding="utf-8"))
+    assert '<figure class="mermaid-diagram"' in rendered.body
+    assert "<svg" in rendered.body
+    assert not rendered.warnings
     result = convert_markdown_file(source, output_path=output, overwrite=True)
 
     assert result["action"] == "convert"

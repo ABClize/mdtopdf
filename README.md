@@ -104,6 +104,23 @@ check summary, warnings, and render method. If conversion fails in JSON mode,
 the error is structured enough for an agent to show the command, explain the
 likely cause, and retry after a fix.
 
+A successful conversion can still have warnings: a missing image, an unavailable
+font, or a Mermaid block left as code. Read `warnings` before handing over the PDF.
+For jobs that must not accept these fallbacks:
+
+```shell
+mdtopdf convert report.md -o report.pdf --overwrite --strict --json
+mdtopdf doctor --render-check --json
+```
+
+`--strict` leaves an existing output untouched when a diagnostic is raised.
+It is also available for file-based HTML previews, but previews do not load images
+or run the PDF renderer. `doctor --render-check` renders a small PDF and exercises
+Mermaid when installed; it is a runtime smoke test, not a guarantee of visual parity.
+Exit codes are `0` for success, `1` for conversion/runtime/strict-check failures,
+and `2` for invalid command arguments. `doctor` uses `1` when `ok` is false;
+missing optional fonts or Mermaid alone do not make the basic check fail.
+
 ## Visual output
 
 The gallery below is rendered from the final PDF produced by
@@ -127,7 +144,7 @@ Markdown -> markdown-it-py HTML -> theme/custom CSS -> WeasyPrint PDF
 
 Mermaid rendering is optional. If a local `mmdc` command exists, Mermaid blocks
 render to SVG. If it is missing, conversion still succeeds and Mermaid blocks
-remain visible as highlighted code.
+remain visible as highlighted code, with a warning.
 
 ## Features
 
@@ -205,6 +222,11 @@ mdtopdf convert report.md -o report.pdf --css print.css --base-url .
 During export, `mdtopdf` checks the final CSS font stacks. Missing fonts do not
 stop PDF generation, but they are reported in CLI warnings and in the JSON
 `warnings` field.
+Custom CSS also warns when its first named font is missing, even if a fallback
+is available. Local `@font-face` files are checked for readability and CJK
+coverage; declaring a family is not enough. Remote font sources are not fetched
+by this static check and are reported as unverified. These checks do not replace
+reviewing the rendered PDF. Pass `--strict` to reject warnings.
 
 Return JSON:
 
@@ -219,6 +241,10 @@ Allow raw HTML only for trusted local Markdown:
 ```shell
 mdtopdf convert trusted.md -o trusted.pdf --unsafe-html
 ```
+
+HTML filtering is not a filesystem or network sandbox. Images and CSS can still
+reference local files or remote URLs. Run untrusted documents in an environment
+with restricted filesystem access and networking.
 
 ## Python API
 
@@ -271,7 +297,7 @@ npm install -g @mermaid-js/mermaid-cli
 
 `mdtopdf` does not call Mermaid.ink and does not download Mermaid CLI through
 `npx` during conversion. Run `mdtopdf doctor --json` to check whether Mermaid
-rendering is available.
+CLI is on PATH. Use `mdtopdf doctor --render-check --json` to test actual rendering.
 
 ## Platform notes
 

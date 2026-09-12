@@ -45,6 +45,7 @@ mdtopdf convert INPUT.md -o OUTPUT.pdf --overwrite --json
 - `--css print.css`: apply custom print CSS.
 - `--unsafe-html`: allow raw HTML only for trusted local Markdown.
 - `--json`: prefer this for agent workflows.
+- `--strict`: reject warnings without replacing existing output.
 
 ## Environment
 
@@ -99,6 +100,8 @@ apt-get install -y --no-install-recommends fonts-cascadia-code
 ## Failure Handling
 
 - Read JSON errors first; do not guess from stderr alone.
+- Also read `warnings` on success. Exit codes: 0 success, 1 runtime/conversion/strict failure, 2 invalid arguments.
+- Use `doctor --render-check --json` for a real PDF and optional Mermaid smoke test; basic doctor only probes availability.
 - If conversion fails with WeasyPrint, Pango, GLib, Cairo, or DLL errors, fix the items reported by `doctor --json`.
 - If images are missing, add `--base-url` or `--resource-dir`.
 - If Mermaid diagrams do not render, install local `mmdc`; `mdtopdf` does not call Mermaid.ink or auto-download Mermaid CLI.

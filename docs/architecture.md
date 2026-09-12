@@ -27,7 +27,31 @@ dependencies, native libraries, recommended fallback fonts, and the optional
 Mermaid renderer are available before attempting a conversion.
 Conversion also checks the final CSS font stacks after theme and custom CSS are
 combined. Missing fonts are surfaced as warnings in text output and as
-structured `warnings` entries in JSON results; they do not stop PDF generation.
+structured `warnings` entries in JSON results; by default they do not stop PDF
+generation. Fontconfig is preferred when available, with Matplotlib discovery as
+a fallback. Local font-face sources are validated with fontTools; remote sources
+remain unverified during static inspection.
+
+Code blocks are identified using CommonMark token source maps before Obsidian
+and safe-HTML preprocessing. Their original Markdown is restored before final
+parsing, so code inside lists and blockquotes remains literal.
+
+`core/diagnostics.py` collects document-local warnings, including math fallback,
+missing Mermaid, and material WeasyPrint resource/font errors. Context-local
+collectors keep nested or concurrent conversions separate. Browser-only CSS
+warnings from the shared theme are not treated as missing-content failures.
+`core/output.py` is the common PDF writer for file and string APIs: it renders
+to a temporary sibling file and replaces the destination after validation.
+`strict=True` / `--strict` raises on warnings before replacement, preserving an
+existing destination. Explicit same-path input/output with overwrite remains
+supported. HTML previews only run static/render-preparation diagnostics; they do
+not verify that images can be loaded by a browser or the PDF engine.
+
+The basic doctor checks imports and tool discovery. `doctor --render-check`
+also renders a sample PDF with math and, if installed, a Mermaid diagram.
+Font availability and successful smoke rendering are not visual-parity guarantees.
+The CLI returns exit 1 when doctor reports `ok: false`; usage errors return 2,
+including a JSON error when `--json` is requested.
 
 The default theme uses a PDFium-safe Latin-first body font stack. Latin fonts
 come before CJK fonts so ASCII digits, dates, versions, and page counters are
@@ -78,6 +102,9 @@ Raw HTML input is disabled by default except for the safe authoring subset. This
 keeps untrusted Markdown from being passed straight through to the PDF renderer
 as active HTML. Trusted local Markdown can opt into raw HTML with
 `convert --unsafe-html`.
+This filtering is not a resource sandbox: WeasyPrint can still load local and
+remote resources referenced by ordinary Markdown images and CSS. Callers must
+provide filesystem and network isolation when rendering untrusted documents.
 
 ## Command Surface
 

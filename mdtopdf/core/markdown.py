@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 from io import BytesIO
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html import escape, unescape
 from importlib import resources
 import re
@@ -30,7 +30,10 @@ from mdtopdf.core.inline import (
     html_emphasis_tags,
     is_escaped_marker,
     map_lines_outside_fences,
+    protect_code_blocks,
+    restore_code_blocks,
 )
+from mdtopdf.core.diagnostics import collect_warnings, warn
 from mdtopdf.core.katex import load_katex_css, render_katex_to_html
 from mdtopdf.core.mermaid import find_mermaid_backend, render_mermaid_to_html
 from mdtopdf.core.obsidian import (
@@ -65,6 +68,7 @@ class RenderedHTML:
     body: str
     css: str
     html: str
+    warnings: list[dict] = field(default_factory=list)
 
 
 def available_themes() -> list[str]:
@@ -112,6 +116,7 @@ def compose_css(
     page_header: str | None = None,
     page_footer: str | None = None,
     page_numbers: bool = False,
+    lang: str = "zh-Hans",
 ) -> str:
     """Combine theme, math, code highlight, page margin, and custom CSS.
 
@@ -122,7 +127,7 @@ def compose_css(
         theme_css,
         load_katex_css(),
         _pygments_css(),
-        _page_margin_css(page_header, page_footer, page_numbers),
+        _page_margin_css(page_header, page_footer, page_numbers, lang=lang),
     ]
     if custom_css:
         parts.append(custom_css)
@@ -173,7 +178,8 @@ def render_markdown_to_html(
     resolved_title = title or infer_title(markdown_text) or "Markdown Document"
     resolved_header = page_header if page_header is not None else resolved_title
     resolved_footer = page_footer or None
-    obsidian_result = protect_obsidian_code_span_emphasis(markdown_text)
+    protected_source, code_blocks = protect_code_blocks(markdown_text)
+    obsidian_result = protect_obsidian_code_span_emphasis(protected_source)
     if unsafe_html:
         protected_markdown = obsidian_result.markdown
         safe_html_placeholders: dict[str, str] = {}
@@ -185,7 +191,9 @@ def render_markdown_to_html(
         embed_resolver=obsidian_embed_resolver,
     )
     md = _build_markdown_renderer(unsafe_html=unsafe_html)
-    body = md.render(protected_markdown)
+    protected_markdown = restore_code_blocks(protected_markdown, code_blocks)
+    with collect_warnings() as warnings:
+        body = md.render(protected_markdown)
     body = _restore_placeholders(body, safe_html_placeholders)
     body = restore_obsidian_placeholders(body, obsidian_result)
     body = _unwrap_safe_block_tags(body)
@@ -200,9 +208,10 @@ def render_markdown_to_html(
         page_header=resolved_header if include_page_header else None,
         page_footer=resolved_footer if include_page_footer else None,
         page_numbers=page_numbers if include_page_footer else False,
+        lang=infer_document_lang(markdown_text),
     )
     html = _build_document(resolved_title, body, css, lang=infer_document_lang(markdown_text))
-    return RenderedHTML(title=resolved_title, body=body, css=css, html=html)
+    return RenderedHTML(title=resolved_title, body=body, css=css, html=html, warnings=warnings)
 
 
 def _resolve_image_sources(html: str, resource_resolver: Callable[[str], str]) -> str:
@@ -265,6 +274,7 @@ def _render_fence(
     lang = token.info.strip().split(maxsplit=1)[0] if token.info else ""
     if lang.lower() in {"mermaid", "mmd"}:
         if find_mermaid_backend() is None:
+            warn("mermaid_unavailable", "Mermaid CLI was not found; the diagram is shown as source code.")
             return highlight_code(token.content, lang)
         return render_mermaid_to_html(token.content)
     return highlight_code(token.content, lang)
@@ -299,8 +309,8 @@ def latex_to_html_math(content: str, *, display: str = "inline") -> str:
         return ""
     try:
         return render_katex_to_html(latex, display=display)
-    except Exception:
-        pass
+    except Exception as exc:
+        warn("math_fallback", "KaTeX rendering failed; a math fallback was used.", error=str(exc))
     if _is_latex_array_environment(latex):
         return latex_array_to_html(latex)
     if r"\ce{" in latex:
@@ -984,7 +994,7 @@ def _pygments_css() -> str:
     return formatter.get_style_defs(".highlight")
 
 
-def _page_margin_css(page_header: str | None, page_footer: str | None, page_numbers: bool) -> str:
+def _page_margin_css(page_header: str | None, page_footer: str | None, page_numbers: bool, *, lang: str = "zh-Hans") -> str:
     if not page_header and not page_footer and not page_numbers:
         return ""
 
@@ -1002,7 +1012,7 @@ def _page_margin_css(page_header: str | None, page_footer: str | None, page_numb
             ]
         )
 
-    footer_content = _page_footer_content(page_footer, page_numbers)
+    footer_content = _page_footer_content(page_footer, page_numbers, lang=lang)
     if footer_content:
         rules.extend(
             [
@@ -1020,7 +1030,10 @@ def _page_margin_css(page_header: str | None, page_footer: str | None, page_numb
     return "\n".join(rules)
 
 
-def _page_footer_content(page_footer: str | None, page_numbers: bool) -> str | None:
+def _page_footer_content(page_footer: str | None, page_numbers: bool, *, lang: str = "zh-Hans") -> str | None:
+    if page_numbers and not lang.startswith("zh"):
+        prefix = (page_footer + " · ") if page_footer else ""
+        return f'{_css_string(prefix + "Page ")} counter(page) " of " counter(pages)'
     if page_footer and page_numbers:
         return f'{_css_string(page_footer + " · 第 ")} counter(page) " 页 / 共 " counter(pages) " 页"'
     if page_footer:
@@ -1079,6 +1092,8 @@ _EMOJI_BASE_PATTERN = (
     "]"
 )
 _EMOJI_TEXT_RE = re.compile(
+    r"[\U0001F1E6-\U0001F1FF]{2}|"
+    r"[0-9#*]\ufe0f?\u20e3|"
     rf"{_EMOJI_BASE_PATTERN}[\ufe0e\ufe0f]?(?:[\U0001F3FB-\U0001F3FF])?"
     rf"(?:\u200d{_EMOJI_BASE_PATTERN}[\ufe0e\ufe0f]?(?:[\U0001F3FB-\U0001F3FF])?)*"
 )

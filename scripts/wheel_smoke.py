@@ -1,0 +1,44 @@
+"""Run with the wheel's Python, from outside the source checkout."""
+
+from importlib import metadata, resources
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+import mdtopdf
+
+
+def run(*args):
+    proc = subprocess.run(
+        [sys.executable, "-m", "mdtopdf", *args],
+        check=True, capture_output=True, text=True, encoding="utf-8", timeout=90,
+    )
+    return proc.stdout
+
+
+def main():
+    package_path = Path(mdtopdf.__file__).resolve()
+    assert Path(sys.prefix).resolve() in package_path.parents, package_path
+    version = metadata.version("agent-markdown-pdf")
+    assert version in run("--version")
+    assert "--strict" in run("convert", "--help")
+    assert json.loads(run("doctor", "--json"))["ok"]
+    package = resources.files("mdtopdf")
+    assert package.joinpath("skills/SKILL.md").is_file()
+    assert package.joinpath("themes/default.css").is_file()
+    assert package.joinpath("vendor/katex/dist/fonts/KaTeX_Main-Regular.woff2").is_file()
+    with tempfile.TemporaryDirectory(prefix="mdtopdf-wheel-") as directory:
+        source = Path(directory) / "report.md"
+        source.write_text("# Wheel check\n\n0123456789\n\n$x^2 + 1$\n", encoding="utf-8")
+        result = json.loads(run("convert", str(source), "--strict", "--json"))
+        assert result["ok"] and result["warnings"] == []
+        assert Path(result["output"]).read_bytes().startswith(b"%PDF-")
+        preview = json.loads(run("html", str(source), "--json"))
+        assert "katex" in Path(preview["output"]).read_text(encoding="utf-8")
+    print(f"Installed wheel {version} passed: {package_path}")
+
+
+if __name__ == "__main__":
+    main()
