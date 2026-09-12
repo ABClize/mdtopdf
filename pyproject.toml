@@ -39,6 +39,8 @@ dependencies = [
   "matplotlib>=3.10.0",
   "mini-racer>=0.14.1",
   "weasyprint>=69.0",
+  "tinycss2>=1.4.0",
+  "fonttools[woff]>=4.59.2",
 ]
 
 [project.optional-dependencies]
@@ -46,6 +48,7 @@ dev = [
   "pytest>=8.0.0",
   "build>=1.2.0",
   "twine>=5.0.0",
+  "pypdfium2>=4.30.0",
 ]
 
 [project.scripts]

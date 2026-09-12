@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from mdtopdf.core.doctor import add_weasyprint_dll_directories
 from mdtopdf.core.fonts import inspect_css_font_usage, summarize_font_usage
 from mdtopdf.core.markdown import (
     DEFAULT_THEME,
@@ -12,6 +11,7 @@ from mdtopdf.core.markdown import (
     render_markdown_to_html,
 )
 from mdtopdf.core.obsidian import build_resource_resolver, resolve_resource_dir
+from mdtopdf.core.output import write_pdf
 
 
 def derive_output_path(input_path: str | Path) -> Path:
@@ -37,6 +37,7 @@ def convert_markdown_file(
     include_page_header: bool = True,
     include_page_footer: bool = True,
     page_numbers: bool = True,
+    strict: bool = False,
 ) -> dict[str, Any]:
     """Convert a Markdown file to PDF using the package rendering pipeline.
 
@@ -62,6 +63,7 @@ def convert_markdown_file(
         include_page_header: Whether to include page header CSS.
         include_page_footer: Whether to include page footer CSS.
         page_numbers: Whether the footer includes the current page number.
+        strict: Reject warnings without replacing existing output.
 
     Returns:
         A JSON-serializable result dictionary matching the CLI ``--json`` shape.
@@ -101,20 +103,12 @@ def convert_markdown_file(
         page_numbers=page_numbers,
         obsidian_embed_resolver=build_resource_resolver(pdf_base_url, source, resolved_resource_dir),
     )
-    font_usage = inspect_css_font_usage(rendered.css, document_text=markdown_text)
-
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    try:
-        add_weasyprint_dll_directories()
-        from weasyprint import HTML
-    except Exception as exc:
-        raise RuntimeError(
-            "WeasyPrint could not be imported or initialized. Run "
-            "`mdtopdf doctor` for native library diagnostics."
-        ) from exc
-
-    HTML(string=rendered.html, base_url=pdf_base_url).write_pdf(str(output))
+    font_usage = inspect_css_font_usage(
+        rendered.css, document_text=markdown_text, base_url=pdf_base_url, custom_css=custom_css,
+    )
+    warnings = write_pdf(
+        rendered, output, base_url=pdf_base_url, warnings=font_usage["warnings"], strict=strict,
+    )
     file_size = output.stat().st_size
     effective_header = resolved_page_header if include_page_header else None
     effective_footer = page_footer if include_page_footer else None
@@ -133,7 +127,7 @@ def convert_markdown_file(
         "page_footer": effective_footer,
         "page_numbers": bool(include_page_footer and page_numbers),
         "font_check": summarize_font_usage(font_usage),
-        "warnings": font_usage.get("warnings", []),
+        "warnings": warnings,
         "method": "markdown-it-py+weasyprint",
     }
 

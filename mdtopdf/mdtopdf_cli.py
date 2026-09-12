@@ -18,6 +18,65 @@ def _emit_json(data: dict[str, Any]) -> None:
     click.echo(json_module.dumps(data, ensure_ascii=False, indent=2))
 
 
+def _error_result(exc: Exception) -> dict[str, Any]:
+    result = {"ok": False, "error": str(exc), "error_type": type(exc).__name__}
+    if hasattr(exc, "warnings"):
+        result["warnings"] = exc.warnings
+    return result
+
+
+class JsonGroup(click.Group):
+    def main(self, args=None, prog_name=None, complete_var=None, standalone_mode=True, **extra):
+        args = list(sys.argv[1:] if args is None else args)
+        try:
+            result = super().main(
+                args, prog_name=prog_name, complete_var=complete_var, standalone_mode=False, **extra,
+            )
+        except click.ClickException as exc:
+            if not standalone_mode:
+                raise
+            if self._requests_json(args):
+                _emit_json(_error_result(exc))
+            else:
+                exc.show()
+            raise SystemExit(exc.exit_code) from exc
+        except click.Abort as exc:
+            if not standalone_mode:
+                raise
+            if self._requests_json(args):
+                _emit_json(_error_result(exc))
+            else:
+                click.echo("Aborted!", err=True)
+            raise SystemExit(1) from exc
+        if standalone_mode:
+            raise SystemExit(result if isinstance(result, int) else 0)
+        return result
+
+    def _requests_json(self, args):
+        value_options = set()
+
+        def visit(command):
+            for param in command.params:
+                if isinstance(param, click.Option) and not param.is_flag:
+                    value_options.update(param.opts)
+            if isinstance(command, click.Group):
+                for child in command.commands.values():
+                    visit(child)
+
+        visit(self)
+        skip_value = False
+        for arg in args:
+            if skip_value:
+                skip_value = False
+                continue
+            if arg == "--":
+                break
+            if arg == "--json":
+                return True
+            skip_value = arg in value_options
+        return False
+
+
 def _json_enabled(ctx: click.Context, local_json: bool = False) -> bool:
     obj = ctx.find_root().obj or {}
     return bool(obj.get("json") or local_json)
@@ -31,7 +90,7 @@ def _emit_warnings(data: dict[str, Any]) -> None:
         click.secho(f"Warning: {message}{suffix}", fg="yellow", err=True)
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.group(cls=JsonGroup, context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(version=__version__, prog_name="mdtopdf")
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
 @click.pass_context
@@ -60,6 +119,7 @@ def cli(ctx: click.Context, json_output: bool) -> None:
     help="Directory for bare image names such as ![[image.png]] or ![](image.png).",
 )
 @click.option("--overwrite", is_flag=True, help="Replace an existing output PDF.")
+@click.option("--strict", is_flag=True, help="Fail on rendering warnings without replacing the output.")
 @click.option("--unsafe-html", is_flag=True, help="Allow raw HTML in trusted Markdown input.")
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
 @click.pass_context
@@ -78,6 +138,7 @@ def convert(
     base_url: str | None,
     resource_dir: Path | None,
     overwrite: bool,
+    strict: bool,
     unsafe_html: bool,
     json_output: bool,
 ) -> None:
@@ -93,6 +154,7 @@ def convert(
             base_url=base_url,
             resource_dir=resource_dir,
             overwrite=overwrite,
+            strict=strict,
             unsafe_html=unsafe_html,
             page_header=page_header,
             page_footer=page_footer,
@@ -102,7 +164,7 @@ def convert(
         )
     except Exception as exc:
         if _json_enabled(ctx, json_output):
-            _emit_json({"ok": False, "error": str(exc), "error_type": type(exc).__name__})
+            _emit_json(_error_result(exc))
             raise click.exceptions.Exit(1) from exc
         raise click.ClickException(str(exc)) from exc
 
@@ -131,6 +193,7 @@ def convert(
     help="Directory for bare image names such as ![[image.png]] or ![](image.png).",
 )
 @click.option("--overwrite", is_flag=True, help="Replace an existing output HTML file.")
+@click.option("--strict", is_flag=True, help="Fail on preview diagnostics without replacing the output.")
 @click.option("--unsafe-html", is_flag=True, help="Allow raw HTML in trusted Markdown input.")
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
 @click.pass_context
@@ -149,6 +212,7 @@ def html(
     base_url: str | None,
     resource_dir: Path | None,
     overwrite: bool,
+    strict: bool,
     unsafe_html: bool,
     json_output: bool,
 ) -> None:
@@ -164,6 +228,7 @@ def html(
             base_url=base_url,
             resource_dir=resource_dir,
             overwrite=overwrite,
+            strict=strict,
             unsafe_html=unsafe_html,
             page_header=page_header,
             page_footer=page_footer,
@@ -173,7 +238,7 @@ def html(
         )
     except Exception as exc:
         if _json_enabled(ctx, json_output):
-            _emit_json({"ok": False, "error": str(exc), "error_type": type(exc).__name__})
+            _emit_json(_error_result(exc))
             raise click.exceptions.Exit(1) from exc
         raise click.ClickException(str(exc)) from exc
 
@@ -185,16 +250,25 @@ def html(
 
 
 @cli.command()
+@click.option("--render-check", is_flag=True, help="Render a sample PDF and test Mermaid if installed.")
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
 @click.pass_context
-def doctor(ctx: click.Context, json_output: bool) -> None:
+def doctor(ctx: click.Context, json_output: bool, render_check: bool) -> None:
     """Check Python and native WeasyPrint dependencies."""
 
-    result = run_doctor()
+    try:
+        result = run_doctor(render_check=render_check)
+    except Exception as exc:
+        if _json_enabled(ctx, json_output):
+            _emit_json(_error_result(exc))
+            raise click.exceptions.Exit(1) from exc
+        raise click.ClickException(str(exc)) from exc
     if _json_enabled(ctx, json_output):
         _emit_json(result)
     else:
         click.echo(format_doctor_text(result))
+    if not result.get("ok"):
+        raise click.exceptions.Exit(1)
 
 
 @cli.group()

@@ -39,7 +39,7 @@ def add_weasyprint_dll_directories() -> list[str]:
     return added
 
 
-def run_doctor() -> dict[str, Any]:
+def run_doctor(*, render_check: bool = False) -> dict[str, Any]:
     """Inspect Python packages, optional Mermaid support, and native libraries.
 
     Returns:
@@ -82,8 +82,42 @@ def run_doctor() -> dict[str, Any]:
     if result["platform"]["system"] == "Linux":
         result["tools"]["fontconfig"] = _inspect_fontconfig()
     result["ok"] = all(info["ok"] for info in result["packages"].values())
+    if render_check:
+        result["render_checks"] = _run_render_checks(result["tools"]["mermaid"].get("ok", False))
+        result["ok"] = result["ok"] and all(
+            check.get("ok") or check.get("skipped") for check in result["render_checks"].values()
+        )
     result["recommendations"] = _recommendations(result)
     return result
+
+
+def _run_render_checks(mermaid_available):
+    from mdtopdf.core.diagnostics import collect_warnings
+    from mdtopdf.core.markdown import render_markdown_to_html
+    from mdtopdf.core.mermaid import render_mermaid_to_svg
+
+    checks = {}
+    try:
+        from weasyprint import HTML
+
+        rendered = render_markdown_to_html("# Render check\n\n0123456789 v0.2.2 IT-001\n\n$x^2 + 1$")
+        with collect_warnings(render_logs=True) as warnings:
+            pdf = HTML(string=rendered.html).write_pdf()
+        warnings = [*rendered.warnings, *warnings]
+        checks["pdf"] = {
+            "ok": pdf.startswith(b"%PDF-") and not warnings, "file_size": len(pdf), "warnings": warnings,
+        }
+    except Exception as exc:
+        checks["pdf"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    if mermaid_available:
+        try:
+            svg = render_mermaid_to_svg("graph TD; A-->B")
+            checks["mermaid"] = {"ok": "<svg" in svg}
+        except Exception as exc:
+            checks["mermaid"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    else:
+        checks["mermaid"] = {"ok": False, "skipped": True, "reason": "Optional Mermaid CLI is not installed."}
+    return checks
 
 
 def format_doctor_text(result: dict[str, Any]) -> str:
@@ -132,6 +166,12 @@ def format_doctor_text(result: dict[str, Any]) -> str:
                 f"  - {name}: {'OK' if info.get('ok') else 'MISSING'} "
                 f"found={found} recommended={recommended}"
             )
+
+    if result.get("render_checks"):
+        lines.extend(["", "Render checks:"])
+        for name, check in result["render_checks"].items():
+            status = "SKIPPED" if check.get("skipped") else ("OK" if check.get("ok") else "FAIL")
+            lines.append(f"  - {name}: {status} {check.get('error', check.get('reason', ''))}".rstrip())
 
     if result.get("recommendations"):
         lines.extend(["", "Recommendations:"])

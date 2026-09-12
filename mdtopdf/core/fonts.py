@@ -2,8 +2,16 @@ from __future__ import annotations
 
 import shutil
 import subprocess
-import re
-from typing import Any, Iterable
+import base64
+from functools import lru_cache
+from io import BytesIO
+from pathlib import Path
+from urllib.parse import unquote, urljoin, urlparse
+from urllib.request import url2pathname
+from typing import Any
+
+import tinycss2
+from fontTools.ttLib import TTFont
 
 
 GENERIC_FONT_FAMILIES = {
@@ -123,14 +131,35 @@ CJK_CAPABLE_FONT_FAMILIES = (
 )
 EMOJI_FONT_FAMILIES = tuple(RECOMMENDED_FONT_GROUPS["emoji"]["families"])
 
-_FONT_FACE_BLOCK_RE = re.compile(r"@font-face\s*\{[^{}]*\}", re.IGNORECASE | re.DOTALL)
-_FONT_FAMILY_RE = re.compile(r"\bfont-family\s*:\s*([^;{}]+)", re.IGNORECASE)
-
 
 def available_font_names() -> set[str]:
+    executable = shutil.which("fc-list")
+    if executable:
+        try:
+            proc = subprocess.run(
+                [executable, "-f", "%{family}\n"], check=True, capture_output=True,
+                text=True, encoding="utf-8", timeout=5,
+            )
+            names = {
+                name.strip() for line in proc.stdout.splitlines()
+                for name in line.split(",") if name.strip()
+            }
+            if names:
+                return _FontNames(names, backend="fontconfig")
+        except (OSError, subprocess.SubprocessError, UnicodeError):
+            pass
     from matplotlib import font_manager
 
-    return {font.name for font in font_manager.fontManager.ttflist}
+    return _FontNames(
+        {font.name for font in font_manager.fontManager.ttflist},
+        backend="matplotlib.font_manager",
+    )
+
+
+class _FontNames(set):
+    def __init__(self, names, *, backend):
+        super().__init__(names)
+        self.backend = backend
 
 
 def match_font_name(family: str, available: set[str]) -> str | None:
@@ -158,6 +187,7 @@ def inspect_recommended_font_groups(platform_system: str | None = None) -> dict[
         result["error"] = f"{type(exc).__name__}: {exc}"
         return result
 
+    result["backend"] = getattr(available, "backend", result["backend"])
     fontconfig_emoji = _fontconfig_emoji_match()
     for group_name, group in RECOMMENDED_FONT_GROUPS.items():
         recommended = list(group["families"])
@@ -171,7 +201,7 @@ def inspect_recommended_font_groups(platform_system: str | None = None) -> dict[
             for family in fontconfig_emoji.get("families", []):
                 if family not in found:
                     found.append(family)
-        missing = [family for family in recommended if not match_font_name(family, available)]
+        missing = [family for family in recommended if not match_font_name(family, set(found))]
         result["groups"][group_name] = {
             "ok": bool(found),
             "description": group["description"],
@@ -199,7 +229,10 @@ def _preferred_families(
     return group.get("preferred", group["families"][:1])
 
 
-def inspect_css_font_usage(css: str, *, document_text: str | None = None) -> dict[str, Any]:
+def inspect_css_font_usage(
+    css: str, *, document_text: str | None = None,
+    base_url: str | None = None, custom_css: str | None = None,
+) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ok": True,
         "backend": "matplotlib.font_manager",
@@ -218,22 +251,34 @@ def inspect_css_font_usage(css: str, *, document_text: str | None = None) -> dic
             {
                 "type": "font_inspection_failed",
                 "message": (
-                    "Font inspection failed; output was still written, "
-                    "but font fallback should be checked visually."
+                    "Font inspection failed; "
+                    "font fallback should be checked visually."
                 ),
                 "error": result["error"],
             }
         )
         return result
 
-    css_without_font_faces, defined_faces = _extract_font_faces(css)
+    result["backend"] = getattr(available, "backend", result["backend"])
+    face_rules, declarations = _font_declarations(css)
+    defined_faces = {}
+    cjk_characters = {ord(char) for char in document_text or "" if _contains_cjk(char)}
+    for family, sources in face_rules:
+        face = _inspect_font_sources(sources, available, base_url, cjk_characters)
+        defined_faces.setdefault(family.lower(), []).append(face)
     result["font_faces"] = sorted(defined_faces)
+    result["font_face_checks"] = defined_faces
+    custom_declarations = set(_font_declarations(custom_css or "")[1])
 
     seen_stacks: set[tuple[str, ...]] = set()
-    for declaration in _FONT_FAMILY_RE.findall(_strip_css_comments(css_without_font_faces)):
+    for declaration in declarations:
         families = _parse_font_family_list(declaration)
         checkable = [family for family in families if _is_checkable_font_family(family)]
         if not checkable:
+            continue
+        if not _contains_emoji(document_text or "") and all(
+            family in EMOJI_FONT_FAMILIES for family in checkable
+        ) and declaration not in custom_declarations:
             continue
 
         normalized = tuple(family.lower() for family in checkable)
@@ -245,8 +290,13 @@ def inspect_css_font_usage(css: str, *, document_text: str | None = None) -> dic
         missing = []
         for family in checkable:
             if family.lower() in defined_faces:
-                resolved.append({"family": family, "source": "font-face", "matched": family})
-                continue
+                valid = [face for face in defined_faces[family.lower()] if face["ok"]]
+                if valid:
+                    resolved.append({
+                        "family": family, "source": "font-face", "matched": family,
+                        "cjk_capable": any(face["cjk_capable"] for face in valid),
+                    })
+                    continue
             match = match_font_name(family, available)
             if match:
                 resolved.append({"family": family, "source": "system", "matched": match})
@@ -261,6 +311,24 @@ def inspect_css_font_usage(css: str, *, document_text: str | None = None) -> dic
             "declaration": ", ".join(families),
         }
         result["stacks"].append(stack)
+        for family in checkable:
+            for face in defined_faces.get(family.lower(), []):
+                if not face["ok"]:
+                    result["ok"] = False
+                    warning = {
+                        "type": "font_face_unavailable",
+                        "message": f"Could not verify @font-face '{family}'; font fallback may be used.",
+                        "families": [family], "error": face["error"],
+                    }
+                    if warning not in result["warnings"]:
+                        result["warnings"].append(warning)
+        if declaration in custom_declarations and checkable[0] in missing and resolved:
+            result["ok"] = False
+            result["warnings"].append({
+                "type": "missing_preferred_font",
+                "message": "The first font in a custom CSS stack is unavailable; a fallback will be used.",
+                "families": [checkable[0]], "declaration": stack["declaration"],
+            })
         if not stack["ok"]:
             result["ok"] = False
             result["warnings"].append(
@@ -268,7 +336,7 @@ def inspect_css_font_usage(css: str, *, document_text: str | None = None) -> dic
                     "type": "missing_font_stack",
                     "message": (
                         "No installed or @font-face font matched this CSS font-family stack; "
-                        "output was still written and WeasyPrint will choose a fallback."
+                        "WeasyPrint will choose a fallback."
                     ),
                     "families": checkable,
                     "declaration": stack["declaration"],
@@ -282,7 +350,7 @@ def inspect_css_font_usage(css: str, *, document_text: str | None = None) -> dic
                 "type": "missing_cjk_font",
                 "message": (
                     "Document contains CJK text, but no common CJK-capable font was found; "
-                    "output was still written, but glyph coverage and pagination should be checked."
+                    "glyph coverage and pagination should be checked."
                 ),
                 "recommended": list(CJK_CAPABLE_FONT_FAMILIES),
             }
@@ -295,7 +363,7 @@ def inspect_css_font_usage(css: str, *, document_text: str | None = None) -> dic
                 "type": "missing_emoji_font",
                 "message": (
                     "Document contains emoji, but no common emoji font was found; "
-                    "output was still written, but emoji rendering can be missing or tiny on Linux."
+                    "emoji rendering can be missing or tiny on Linux."
                 ),
                 "recommended": list(EMOJI_FONT_FAMILIES),
             }
@@ -318,22 +386,83 @@ def summarize_font_usage(font_usage: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _extract_font_faces(css: str) -> tuple[str, set[str]]:
-    defined: set[str] = set()
+def _font_declarations(css):
+    faces, families = [], []
 
-    def remove(match: re.Match[str]) -> str:
-        block = match.group(0)
-        for declaration in _FONT_FAMILY_RE.findall(block):
-            for family in _parse_font_family_list(declaration):
-                if _is_checkable_font_family(family):
-                    defined.add(family.lower())
-        return ""
+    def visit(rules):
+        for rule in rules:
+            if rule.type not in {"at-rule", "qualified-rule"} or rule.content is None:
+                continue
+            items = tinycss2.parse_blocks_contents(rule.content, skip_comments=True, skip_whitespace=True)
+            declarations = {
+                item.lower_name: tinycss2.serialize(item.value).strip()
+                for item in items if item.type == "declaration"
+            }
+            if rule.type == "at-rule" and rule.lower_at_keyword == "font-face":
+                for family in _parse_font_family_list(declarations.get("font-family", "")):
+                    faces.append((family, declarations.get("src", "")))
+            else:
+                if "font-family" in declarations:
+                    families.append(declarations["font-family"])
+                visit(items)
 
-    return _FONT_FACE_BLOCK_RE.sub(remove, css), defined
+    visit(tinycss2.parse_stylesheet(css, skip_comments=True, skip_whitespace=True))
+    return faces, families
 
 
-def _strip_css_comments(css: str) -> str:
-    return re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+@lru_cache(maxsize=256)
+def _file_font_codepoints(path, mtime_ns, size):
+    # Metadata in the cache key invalidates fonts replaced during a long-lived
+    # Python process without re-reading every bundled KaTeX font per export.
+    with TTFont(path, lazy=True, fontNumber=0) as font:
+        return frozenset(font.getBestCmap() or {})
+
+
+def _inspect_font_sources(sources, available, base_url, cjk_characters):
+    errors = []
+    for token in tinycss2.parse_component_value_list(sources, skip_comments=True):
+        url = None
+        if token.type == "function" and token.lower_name == "local":
+            name = tinycss2.serialize(token.arguments).strip().strip("'\"")
+            matched = match_font_name(name, available)
+            if matched:
+                return {"ok": True, "cjk_capable": matched in CJK_CAPABLE_FONT_FAMILIES, "error": None}
+            errors.append(f"Local font not found: {name}")
+        elif token.type == "url":
+            url = token.value
+        elif token.type == "function" and token.lower_name == "url":
+            args = [arg for arg in token.arguments if arg.type not in {"whitespace", "comment"}]
+            if len(args) == 1 and args[0].type == "string":
+                url = args[0].value
+        if url is None:
+            continue
+        try:
+            if url.startswith("data:"):
+                header, data = url.split(",", 1)
+                raw = base64.b64decode(data) if ";base64" in header else unquote(data).encode("latin-1")
+                with TTFont(BytesIO(raw), lazy=True, fontNumber=0) as font:
+                    points = frozenset(font.getBestCmap() or {})
+            else:
+                parsed = urlparse(url)
+                if not parsed.scheme:
+                    base = base_url or str(Path.cwd())
+                    if urlparse(base).scheme in {"file", "http", "https"}:
+                        url = urljoin(base.rstrip("/") + "/", url)
+                    else:
+                        url = (Path(base) / unquote(url)).resolve().as_uri()
+                    parsed = urlparse(url)
+                if parsed.scheme != "file":
+                    errors.append(f"Remote font is not verified by static inspection: {url}")
+                    continue
+                path = Path(url2pathname(parsed.path))
+                if parsed.netloc and parsed.netloc != "localhost":
+                    path = Path(f"//{parsed.netloc}{url2pathname(parsed.path)}")
+                stat = path.stat()
+                points = _file_font_codepoints(str(path), stat.st_mtime_ns, stat.st_size)
+            return {"ok": True, "cjk_capable": bool(cjk_characters) and cjk_characters <= points, "error": None}
+        except Exception as exc:
+            errors.append(f"{type(exc).__name__}: {exc}")
+    return {"ok": False, "cjk_capable": False, "error": "; ".join(errors) or "No usable font source"}
 
 
 def _parse_font_family_list(value: str) -> list[str]:
@@ -423,7 +552,7 @@ def _has_cjk_font_available(available: set[str], font_usage: dict[str, Any]) -> 
             return True
     return any(
         resolved.get("source") == "font-face"
-        and not str(resolved.get("family", "")).lower().startswith("katex_")
+        and resolved.get("cjk_capable", False)
         for stack in font_usage.get("stacks", [])
         for resolved in stack.get("resolved", [])
     )

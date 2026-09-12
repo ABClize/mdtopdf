@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from mdtopdf.core.fonts import inspect_css_font_usage, summarize_font_usage
+from mdtopdf.core.diagnostics import check_warnings
 from mdtopdf.core.markdown import (
     DEFAULT_THEME,
     load_custom_css,
@@ -38,6 +39,7 @@ def convert_markdown_file_to_html(
     include_page_header: bool = True,
     include_page_footer: bool = True,
     page_numbers: bool = True,
+    strict: bool = False,
 ) -> dict[str, Any]:
     """Convert a Markdown file to a standalone Obsidian-compatible HTML file.
 
@@ -64,6 +66,7 @@ def convert_markdown_file_to_html(
         include_page_header: Whether to include page header CSS.
         include_page_footer: Whether to include page footer CSS.
         page_numbers: Whether the footer includes the current page number.
+        strict: Reject preview diagnostics without replacing existing output.
 
     Returns:
         A JSON-serializable result dictionary matching the CLI ``--json`` shape.
@@ -102,7 +105,11 @@ def convert_markdown_file_to_html(
         page_numbers=page_numbers,
         obsidian_embed_resolver=build_resource_resolver(html_base_url, source, resolved_resource_dir),
     )
-    font_usage = inspect_css_font_usage(rendered.css, document_text=markdown_text)
+    font_usage = inspect_css_font_usage(
+        rendered.css, document_text=markdown_text, base_url=html_base_url, custom_css=custom_css,
+    )
+    warnings = [*rendered.warnings, *font_usage["warnings"]]
+    check_warnings(warnings, strict=strict)
 
     html = _inject_base_href(rendered.html, _base_href(html_base_url))
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -125,7 +132,7 @@ def convert_markdown_file_to_html(
         "page_footer": effective_footer,
         "page_numbers": bool(include_page_footer and page_numbers),
         "font_check": summarize_font_usage(font_usage),
-        "warnings": font_usage.get("warnings", []),
+        "warnings": warnings,
         "method": "markdown-it-py+html",
     }
 

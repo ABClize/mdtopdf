@@ -26,16 +26,26 @@ public API stable unless the user explicitly asks for a breaking change.
 
 ## CI Contract
 
-Daily CI lives in `.github/workflows/ci.yml`.
+Daily CI lives in `.github/workflows/ci.yml`. It and the release workflow call
+`.github/workflows/tests.yml`; native setup is shared through
+`.github/actions/setup-native/action.yml`.
 
 - Runs on pushes to `main`, pull requests, and manual dispatch.
 - Tests Python 3.10, 3.11, 3.12, 3.13, and 3.14.
+- Also tests Python 3.12 on Windows and macOS.
 - Installs native WeasyPrint libraries plus the Linux font baseline before
   installing the package.
-- Runs `mdtopdf doctor --json`.
+- Runs `mdtopdf doctor --render-check --json`.
 - Runs `python -m pytest tests/ -q`.
 - Builds and checks distributions with `python -m build` and
   `python -m twine check dist/*`.
+- Requires real Mermaid rendering on Linux/Python 3.12. Other matrix entries
+  skip the optional integration test when mmdc is absent. Use the runner's
+  system Chrome through `PUPPETEER_EXECUTABLE_PATH`; keep its sandbox enabled.
+- Rasterizes mixed CJK/digit PDFs with PDFium and checks visible digit pixels,
+  including page counters. Uploads test PNGs/PDFs for review.
+- Installs the built wheel into a clean environment and runs
+  `scripts/wheel_smoke.py` outside the checkout.
 
 Release CI lives in `.github/workflows/release.yml`.
 
@@ -86,6 +96,7 @@ apt-get install -y --no-install-recommends \
   libgdk-pixbuf-2.0-0 \
   libpango-1.0-0 \
   libpangoft2-1.0-0 \
+  libharfbuzz-subset0 \
   poppler-utils \
   shared-mime-info \
   fonts-dejavu-core \
@@ -154,4 +165,8 @@ visual rendering through Chrome/PDFium or `pypdfium2`, especially for:
 - Preserve user changes in the working tree.
 - Do not refactor adjacent code, rewrite generated vendor files, or regenerate
   README screenshots unless the task requires it.
+- Preserve explicit same-path conversion with overwrite. Strict failures must
+  not replace existing output; without overwrite, existing files remain protected.
+- Add regression tests for fixes and include JSON usage errors, material render
+  warnings, nested code blocks, and platform-independent resource resolution.
 - Use `apply_patch` for manual edits.

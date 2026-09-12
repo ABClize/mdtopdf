@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 from typing import Callable
 from urllib.parse import unquote, urlparse
@@ -15,6 +15,8 @@ from mdtopdf.core.inline import (
     html_emphasis_tags,
     is_escaped_marker,
     map_lines_outside_fences,
+    protect_code_blocks,
+    restore_code_blocks,
 )
 
 
@@ -63,13 +65,14 @@ def preprocess_obsidian_markdown(
     embed_resolver: Callable[[str], str] | None = None,
 ) -> str:
     markdown_text = _strip_yaml_frontmatter(markdown_text)
+    markdown_text, code_blocks = protect_code_blocks(markdown_text)
     markdown_text = _strip_html_comments(markdown_text)
     markdown_text = _strip_obsidian_comments(markdown_text)
     markdown_text = _normalize_tab_indented_lists(markdown_text)
     markdown_text = _normalize_blockquote_continuation(markdown_text)
     markdown_text = _convert_wikilinks(markdown_text, embed_resolver=embed_resolver)
     markdown_text = _normalize_loose_emphasis(markdown_text)
-    return _convert_underscore_emphasis(markdown_text)
+    return restore_code_blocks(_convert_underscore_emphasis(markdown_text), code_blocks)
 
 
 def restore_obsidian_placeholders(html: str, result: ObsidianPreprocessResult) -> str:
@@ -506,12 +509,12 @@ def _has_url_scheme(target: str) -> bool:
 
 
 def _looks_like_file_embed(target: str) -> bool:
-    return Path(unquote(target).replace("/", "\\")).suffix.lower() in _EMBED_FILE_EXTENSIONS
+    return PurePosixPath(unquote(target).replace("\\", "/")).suffix.lower() in _EMBED_FILE_EXTENSIONS
 
 
 def _is_bare_resource_target(target: str) -> bool:
-    target_path = Path(unquote(target).replace("/", "\\"))
-    return target_path.parent == Path(".")
+    target_path = PurePosixPath(unquote(target).replace("\\", "/"))
+    return target_path.parent == PurePosixPath(".")
 
 
 def _href_for_candidate(candidate: Path, base_path: Path) -> str:

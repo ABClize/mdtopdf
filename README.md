@@ -104,6 +104,23 @@ check summary, warnings, and render method. If conversion fails in JSON mode,
 the error is structured enough for an agent to show the command, explain the
 likely cause, and retry after a fix.
 
+A successful conversion can still have warnings: a missing image, an unavailable
+font, or a Mermaid block left as code. Read `warnings` before handing over the PDF.
+For jobs that must not accept these fallbacks:
+
+```shell
+mdtopdf convert report.md -o report.pdf --overwrite --strict --json
+mdtopdf doctor --render-check --json
+```
+
+`--strict` leaves an existing output untouched when a diagnostic is raised.
+It is also available for file-based HTML previews, but previews do not load images
+or run the PDF renderer. `doctor --render-check` renders a small PDF and exercises
+Mermaid when installed; it is a runtime smoke test, not a guarantee of visual parity.
+Exit codes are `0` for success, `1` for conversion/runtime/strict-check failures,
+and `2` for invalid command arguments. `doctor` uses `1` when `ok` is false;
+missing optional fonts or Mermaid alone do not make the basic check fail.
+
 ## Visual output
 
 The gallery below is rendered from the final PDF produced by
@@ -127,7 +144,7 @@ Markdown -> markdown-it-py HTML -> theme/custom CSS -> WeasyPrint PDF
 
 Mermaid rendering is optional. If a local `mmdc` command exists, Mermaid blocks
 render to SVG. If it is missing, conversion still succeeds and Mermaid blocks
-remain visible as highlighted code.
+remain visible as highlighted code, with a warning.
 
 ## Features
 
@@ -205,6 +222,11 @@ mdtopdf convert report.md -o report.pdf --css print.css --base-url .
 During export, `mdtopdf` checks the final CSS font stacks. Missing fonts do not
 stop PDF generation, but they are reported in CLI warnings and in the JSON
 `warnings` field.
+Custom CSS also warns when its first named font is missing, even if a fallback
+is available. Local `@font-face` files are checked for readability and CJK
+coverage; declaring a family is not enough. Remote font sources are not fetched
+by this static check and are reported as unverified. These checks do not replace
+reviewing the rendered PDF. Pass `--strict` to reject warnings.
 
 Return JSON:
 
@@ -219,6 +241,10 @@ Allow raw HTML only for trusted local Markdown:
 ```shell
 mdtopdf convert trusted.md -o trusted.pdf --unsafe-html
 ```
+
+HTML filtering is not a filesystem or network sandbox. Images and CSS can still
+reference local files or remote URLs. Run untrusted documents in an environment
+with restricted filesystem access and networking.
 
 ## Python API
 
@@ -271,13 +297,23 @@ npm install -g @mermaid-js/mermaid-cli
 
 `mdtopdf` does not call Mermaid.ink and does not download Mermaid CLI through
 `npx` during conversion. Run `mdtopdf doctor --json` to check whether Mermaid
-rendering is available.
+CLI is on PATH. Use `mdtopdf doctor --render-check --json` to test actual rendering.
+
+If Linux reports `No usable sandbox`, configure a browser permitted by the
+host's sandbox policy. For an installed system Chrome, for example:
+
+```shell
+export PUPPETEER_EXECUTABLE_PATH="$(command -v google-chrome)"
+mdtopdf doctor --render-check --json
+```
+
+Keep the browser sandbox enabled; see [Puppeteer's Linux troubleshooting](https://pptr.dev/troubleshooting#issues-with-apparmor-on-ubuntu).
 
 ## Platform notes
 
 `mdtopdf` requires Python 3.10+ and installs its Python dependencies from PyPI:
 `click`, `markdown-it-py`, `mdit-py-plugins`, `pygments`, `latex2mathml`,
-`matplotlib`, `mini-racer`, and `weasyprint`.
+`matplotlib`, `mini-racer`, `tinycss2`, `fonttools`, and `weasyprint`.
 
 WeasyPrint also needs native libraries such as Pango, GLib, and Cairo. Linux
 and macOS package managers usually provide them through system packages.
@@ -287,12 +323,16 @@ listed before CJK fonts so ASCII digits, dates, versions, and page numbers are
 not embedded into CJK font subsets that some Chrome/PDFium renderers handle
 poorly. Chinese text still falls back to the CJK side of the stack.
 
-For Linux containers or agent sandboxes, use open fonts that can be installed
-from the distribution package manager. The recommended baseline is:
+For Debian/Ubuntu containers or agent environments, install the native libraries
+and open-font baseline used by CI:
 
 ```shell
+sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   fontconfig \
+  libcairo2 libffi-dev libgdk-pixbuf-2.0-0 \
+  libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+  poppler-utils shared-mime-info \
   fonts-liberation \
   fonts-dejavu-core \
   fonts-noto-cjk \
@@ -316,6 +356,14 @@ Emoji are rendered through the system emoji font. On Linux, prefer monochrome
 many distro package managers and is safe to use as a fallback, but color emoji
 often render too small or misaligned in WeasyPrint/Pango/Cairo/PDFium output.
 
+On macOS, install Pango with Homebrew:
+
+```shell
+brew install pango
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+mdtopdf doctor --render-check --json
+```
+
 On Windows, install the native libraries separately. A common MSYS2 setup is:
 
 ```powershell
@@ -333,6 +381,12 @@ if MSYS2 is installed somewhere else:
 
 ```powershell
 setx WEASYPRINT_DLL_DIRECTORIES "C:\msys64\mingw64\bin"
+```
+
+`setx` applies to new terminals. To use the current PowerShell session as well:
+
+```powershell
+$env:WEASYPRINT_DLL_DIRECTORIES = "C:\msys64\mingw64\bin"
 ```
 
 Run this after installation. The JSON output also reports whether recommended

@@ -98,6 +98,20 @@ mdtopdf convert report.md -o report.pdf --overwrite --json
 `convert --json` 会返回输入路径、输出路径、文件大小、主题、字体检查摘要、warning 和渲染方式。转换失败时，
 JSON 里会有结构化错误，Agent 可以直接把命令、原因和下一步修复建议交代清楚。
 
+命令成功不代表内容一定完整：图片缺失、字体回退、Mermaid 没有渲染等情况都会记录在
+`warnings` 里。不接受这些降级时，可以开启严格模式：
+
+```powershell
+mdtopdf convert report.md -o report.pdf --overwrite --strict --json
+mdtopdf doctor --render-check --json
+```
+
+`--strict` 遇到诊断警告就停止，不替换已有输出。HTML 文件预览也支持这个参数，
+但预览不会加载图片或运行 PDF 引擎。`doctor --render-check` 会实际生成一份小 PDF，
+并在装有 Mermaid 时试着渲染图表；它用于确认环境能运行，不保证不同机器上的版式完全一致。
+退出码：`0` 表示成功，`1` 表示转换、运行环境或严格检查失败，`2` 表示命令参数有误。
+`doctor` 的 `ok` 为 false 时返回 `1`；仅缺少可选字体或 Mermaid 不会让基础检查失败。
+
 ## 输出效果
 
 下面 6 张图来自 `examples/visual-test-cn.md`，能看到标题、Callout、表格、代码、
@@ -118,7 +132,7 @@ Markdown -> markdown-it-py HTML -> theme/custom CSS -> WeasyPrint PDF
 ```
 
 Mermaid 是可选扩展。本地有 `mmdc` 时，Mermaid 代码块会渲染成 SVG；没有
-`mmdc` 时，仍会生成pdf，但Mermaid部分会保留为高亮代码块。
+`mmdc` 时，仍会生成 PDF，但 Mermaid 部分会保留为高亮代码块，并返回警告。
 
 ## 功能特性
 
@@ -190,6 +204,10 @@ mdtopdf convert report.md -o report.pdf --css print.css --base-url .
 ```
 
 导出时，`mdtopdf` 会检查最终 CSS 里的字体栈。字体缺失不会阻断 PDF 生成，但会在命令行 warning 和 JSON 的 `warnings` 字段里提示。
+自定义 CSS 的首选字体缺失时，即使有备用字体，也会提示。对于本地 `@font-face`，
+还会检查字体文件是否可读、是否覆盖文档中的中文，不能只写一个字体名就算检查通过。
+静态检查不会下载远程字体，会将其标为未验证。字体检查不能代替实际查看 PDF；
+需要拒绝警告时使用 `--strict`。
 
 输出 JSON：
 
@@ -204,6 +222,9 @@ mdtopdf themes list --json
 ```powershell
 mdtopdf convert trusted.md -o trusted.pdf --unsafe-html
 ```
+
+HTML 过滤不等于文件系统或网络沙箱：图片和 CSS 仍可引用本地文件或远程地址。
+处理不可信文档时，应在限制了文件访问和网络的环境中运行。
 
 ## Python API
 
@@ -259,13 +280,24 @@ npm install -g @mermaid-js/mermaid-cli
 mdtopdf doctor --json
 ```
 
-检查 Mermaid 渲染是否可用。
+检查是否找到 Mermaid CLI。要确认它能实际渲染，运行
+`mdtopdf doctor --render-check --json`。
+
+如果 Linux 报 `No usable sandbox`，需要配置符合宿主机沙箱策略的浏览器。
+例如机器上已安装系统版 Chrome 时：
+
+```shell
+export PUPPETEER_EXECUTABLE_PATH="$(command -v google-chrome)"
+mdtopdf doctor --render-check --json
+```
+
+保留浏览器沙箱，具体见 [Puppeteer 的 Linux 排障说明](https://pptr.dev/troubleshooting#issues-with-apparmor-on-ubuntu)。
 
 ## 平台依赖
 
 `mdtopdf` 需要 Python 3.10+。Python 依赖会从 PyPI 安装，包括
 `click`、`markdown-it-py`、`mdit-py-plugins`、`pygments`、`latex2mathml`、
-`matplotlib`、`mini-racer`、`weasyprint`。
+`matplotlib`、`mini-racer`、`tinycss2`、`fonttools`、`weasyprint`。
 
 WeasyPrint 还需要 Pango、GLib、Cairo 等原生库。Linux 和 macOS 通常可以通过
 系统包管理器安装。Windows 需要额外处理一次。
@@ -276,12 +308,16 @@ WeasyPrint 还需要 Pango、GLib、Cairo 等原生库。Linux 和 macOS 通常�
 Linux 推荐使用 `Noto Sans CJK SC` 这类开源 CJK 字体，不再把微软雅黑作为 Linux
 运行环境目标。
 
-Linux 容器或 Agent 沙箱里，先安装 fontconfig 和默认主题需要的基础字体。
-推荐的开源组合是：
+Debian/Ubuntu 容器或 Agent 环境可以安装下面这组原生库和开源字体，
+与 CI 的基础环境保持一致：
 
 ```shell
+sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   fontconfig \
+  libcairo2 libffi-dev libgdk-pixbuf-2.0-0 \
+  libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 \
+  poppler-utils shared-mime-info \
   fonts-liberation \
   fonts-dejavu-core \
   fonts-noto-cjk \
@@ -302,6 +338,14 @@ Emoji 走系统 emoji 字体。Linux 上更推荐单色 `Noto Emoji`，PDF 版�
 emoji 稳。`Noto Color Emoji` 更容易通过发行版包管理器安装，也可以作为 fallback，
 但在 WeasyPrint/Pango/Cairo/PDFium 这条链路里经常出现过小或基线偏移的问题。
 
+macOS 可以通过 Homebrew 安装 Pango：
+
+```shell
+brew install pango
+export DYLD_FALLBACK_LIBRARY_PATH="$(brew --prefix)/lib${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+mdtopdf doctor --render-check --json
+```
+
 Windows 上常见的 MSYS2 安装方式：
 
 ```powershell
@@ -318,6 +362,12 @@ pacman -S mingw-w64-x86_64-pango
 
 ```powershell
 setx WEASYPRINT_DLL_DIRECTORIES "C:\msys64\mingw64\bin"
+```
+
+`setx` 对新打开的终端生效。要在当前 PowerShell 窗口继续使用，再运行：
+
+```powershell
+$env:WEASYPRINT_DLL_DIRECTORIES = "C:\msys64\mingw64\bin"
 ```
 
 完成后运行。JSON 结果里也会显示推荐的 Latin、CJK、emoji、等宽代码和数学 fallback 字体是否存在：

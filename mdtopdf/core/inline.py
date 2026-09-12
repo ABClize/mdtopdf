@@ -2,9 +2,43 @@ from __future__ import annotations
 
 import re
 from typing import Callable
+from uuid import uuid4
+
+from markdown_it import MarkdownIt
 
 
 FENCE_RE = re.compile(r"^(?P<indent> {0,3})(?P<fence>`{3,}|~{3,})")
+
+
+def protect_code_blocks(markdown_text: str) -> tuple[str, dict[str, str]]:
+    """Shield CommonMark code blocks, including blocks inside containers.
+
+    Restore the source before final parsing, not after HTML rendering: code must
+    still be escaped by the Markdown renderer and highlighted normally.
+    """
+    lines = markdown_text.splitlines(keepends=True)
+    replacements: dict[str, str] = {}
+    prefix = f"MDTOPDFCODE{uuid4().hex}"
+    tokens = MarkdownIt("commonmark").parse(markdown_text)
+    for token in reversed(tokens):
+        if token.type not in {"fence", "code_block"} or token.map is None:
+            continue
+        start, end = token.map
+        original = "".join(lines[start:end])
+        # Keep a fenced block boundary so line-based preprocessors cannot join
+        # the next line to the marker or treat it as a lazy quote continuation.
+        newline = "\r\n" if original.endswith("\r\n") else "\n" if original.endswith("\n") else ""
+        marker = f"```{prefix}X{start}END\n```{newline}"
+        replacements[marker] = original
+        lines[start:end] = [marker]
+    return "".join(lines), replacements
+
+
+def restore_code_blocks(text: str, replacements: dict[str, str]) -> str:
+    if not replacements:
+        return text
+    pattern = re.compile("|".join(re.escape(key) for key in replacements))
+    return pattern.sub(lambda match: replacements[match.group()], text)
 
 
 def map_lines_outside_fences(markdown_text: str, convert_line: Callable[[str], str]) -> str:
