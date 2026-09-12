@@ -95,6 +95,27 @@ mdtopdf convert examples/visual-test-en.md -o visual-test-en.pdf --overwrite --j
 
 La misma prueba visual también está disponible en chino en `examples/visual-test-cn.md`.
 
+## Actualización
+
+No existe el comando `mdtopdf update`. Para una versión instalada con pip,
+active el mismo entorno virtual o seleccione el mismo intérprete de Python:
+
+```shell
+python -m pip install --upgrade agent-markdown-pdf
+python -m mdtopdf --version
+```
+
+Esto actualiza desde el índice de paquetes, no desde la rama de desarrollo.
+Si instaló con pipx o uv tool, use el mecanismo de actualización de esa herramienta.
+Para instalaciones editables o desde código fuente, actualice la rama correspondiente
+y reinstale desde ese directorio, sin sustituirla accidentalmente por la versión de PyPI.
+
+Fije una versión probada en las dependencias del despliegue; no actualice en cada tarea.
+Después de actualizar a 0.3.0 o posterior, ejecute `mdtopdf doctor --render-check --json`
+y revise un PDF representativo. Si Playwright necesita otro navegador administrado,
+consulte [Configuración del navegador](#configuración-del-navegador).
+La conversión no busca actualizaciones ni actualiza el paquete o navegador automáticamente.
+
 ## Flujo de trabajo para agentes
 
 La habilidad de agente incluida se encuentra en [`mdtopdf/skills/SKILL.md`](https://github.com/ABClize/mdtopdf/blob/main/mdtopdf/skills/SKILL.md). Utilice ese archivo cuando otro agente necesite una guía de ejecución compacta para `mdtopdf`.

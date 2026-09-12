@@ -13,7 +13,7 @@ This guide targets 0.3.0 (in preparation), not the published 0.2.x renderer.
 Until release, install the development branch shown in the README.
 
 ```shell
-python -m pip install -U agent-markdown-pdf
+python -m pip install "git+https://github.com/ABClize/mdtopdf.git@feature/chromium-renderer"
 mdtopdf doctor --render-check --json
 ```
 
@@ -30,6 +30,15 @@ Noto Sans CJK SC for Chinese, and Cascadia or an available monospace font for
 code. Follow the README for emoji and platform details. Do not download
 Microsoft fonts. Mermaid and KaTeX are bundled; no separate mmdc, npm, or
 WeasyPrint installation is needed.
+
+## Updates
+
+Update only when requested, using the original environment and installation method.
+For pip-installed releases: `python -m pip install --upgrade agent-markdown-pdf`,
+then `python -m mdtopdf --version`. Keep pipx/uv tool and source installs under
+their original manager/checkout. Do not replace pinned versions during conversion.
+For 0.3.0+, rerun `doctor --render-check --json` after an upgrade; follow browser
+setup if Playwright needs a new managed browser. There is no `mdtopdf update`.
 
 ## Convert
 

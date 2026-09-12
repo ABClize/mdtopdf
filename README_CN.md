@@ -92,6 +92,25 @@ mdtopdf convert examples/visual-test-cn.md -o visual-test-cn.pdf --overwrite --j
 
 同一份视觉测试也提供英文版：`examples/visual-test-en.md`。
 
+## 更新
+
+目前没有 `mdtopdf update` 命令。用 pip 安装的正式版，先激活原来的虚拟环境，
+或确认使用的是当时安装它的 Python，再执行：
+
+```shell
+python -m pip install --upgrade agent-markdown-pdf
+python -m mdtopdf --version
+```
+
+这个命令更新的是包索引上的版本，不会拉取开发分支。
+通过 pipx 或 uv tool 安装的，请用对应工具更新。
+源码或可编辑安装应更新所用的代码分支，再从该目录安装，不要误换成 PyPI 正式版。
+
+自动化任务建议在依赖文件中固定经过验证的版本，不要每次运行都升级。
+升级到 0.3.0 或更新版本后，运行 `mdtopdf doctor --render-check --json`，再检查一份代表性 PDF。
+如果 Playwright 更新后需要新版托管浏览器，按[浏览器准备](#浏览器准备)处理。
+转换过程不会检查新版本，也不会自动升级包或浏览器。
+
 ## Agent 调用方式
 
 内置 Agent skill 放在 `mdtopdf/skills/SKILL.md`，源码和 PyPI 包里都会带上。
