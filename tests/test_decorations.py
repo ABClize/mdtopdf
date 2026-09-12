@@ -2,7 +2,7 @@ import io
 from urllib.parse import unquote
 from xml.etree import ElementTree
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageStat
 from playwright.sync_api import sync_playwright
 import pypdfium2 as pdfium
 import pytest
@@ -80,9 +80,19 @@ def test_decorations_are_font_independent_and_solid(tmp_path, media):
                 assert abs(center - (width - 1) / 2) <= width * 0.15, kind
             # Paragraph alignment overrides must not move anything inside a vector icon.
             icon = page.locator('.callout-title').first
-            before = icon.screenshot()
+            width = round(icon.evaluate('el => parseFloat(getComputedStyle(el, "::before").width)') * 2)
+            before = Image.open(io.BytesIO(icon.screenshot())).convert('RGB')
+            before = before.crop((0, 0, width, before.height))
             page.add_style_tag(content='.callout-title::before { text-align-last: right; text-align: right; font-family: monospace; }')
-            assert icon.screenshot() == before
+            after = Image.open(io.BytesIO(icon.screenshot())).convert('RGB')
+            after = after.crop((0, 0, width, after.height))
+            before.save(tmp_path / f'icon-before-{media}.png')
+            after.save(tmp_path / f'icon-after-{media}.png')
+            assert before.size == after.size
+            # Compare the icon pixels, not PNG encoding or adjacent title text.
+            # Permit small edge-antialiasing differences from fractional scrolling.
+            difference = ImageChops.difference(before, after)
+            assert max(ImageStat.Stat(difference).mean) < 2
         finally:
             browser.close()
 

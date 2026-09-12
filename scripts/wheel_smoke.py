@@ -10,10 +10,10 @@ import tempfile
 import mdtopdf
 
 
-def run(*args):
+def run(*args, input=None):
     proc = subprocess.run(
         [sys.executable, "-m", "mdtopdf", *args],
-        check=True, capture_output=True, text=True, encoding="utf-8", timeout=90,
+        check=True, capture_output=True, text=True, encoding="utf-8", timeout=90, input=input,
     )
     return proc.stdout
 
@@ -41,6 +41,10 @@ def main():
         html = Path(preview["output"]).read_text(encoding="utf-8")
         assert "katex-html" in html and "<svg" in html
         assert "data-mdtopdf-mermaid=" not in html
+        piped = json.loads(run("convert", "-", "-o", str(Path(directory) / "stdin.pdf"),
+                               "--json", input="# UTF-8 stdin\n\n中文 0123456789\n"))
+        assert piped["ok"] and piped["source"] == "stdin" and piped["input"] == "-"
+        assert Path(piped["output"]).read_bytes().startswith(b"%PDF-")
     print(f"Installed wheel {version} passed: {package_path}")
 
 

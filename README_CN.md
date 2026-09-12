@@ -1,7 +1,7 @@
 <h1 align="center">mdtopdf：面向 Agent 的 Markdown 转 PDF CLI</h1>
 
 <p align="center">
-  <a href="README.md">English README</a> | 中文文档
+  <a href="README.md">English README</a> | 中文文档 | <a href="README.es-ES.md">Español</a>
 </p>
 
 <p align="center">
@@ -39,7 +39,16 @@ Agent 很擅长写 Markdown，但是它用各种方式导出的pdf样式无法�
 
 ## 快速上手
 
-安装：
+> 本文介绍的是**准备中的 0.3.0**。PyPI 当前版本仍为 0.2.2，使用旧渲染后端。
+> 下文的浏览器自动发现、管道输入和 Chromium 渲染流程，需要安装开发版才能使用。
+
+在虚拟环境中试用开发版：
+
+```powershell
+python -m pip install "git+https://github.com/ABClize/mdtopdf.git@feature/chromium-renderer"
+```
+
+安装 PyPI 已发布版（0.2.2，请参考[对应版本文档](https://github.com/ABClize/mdtopdf/blob/v0.2.2/README_CN.md)）：
 
 ```powershell
 python -m pip install agent-markdown-pdf
@@ -54,14 +63,15 @@ PyPI 发行包叫 `agent-markdown-pdf`，安装后提供的命令仍然是 `mdto
 | 执行 CLI | `mdtopdf` |
 | Python import | `mdtopdf` |
 
-检查本机环境：
+开发版第一次转换前，检查本机环境：
 
 ```powershell
-mdtopdf doctor --json
+mdtopdf doctor --render-check --json
 ```
 
+安装包会安装 Python 依赖，包括 Playwright；机器上还需要兼容的 Chromium 浏览器和文档使用的字体。
 已安装的 Chrome、Edge 或 Chromium 会自动查找；找不到时再按[浏览器准备](#浏览器准备)
-安装。第一次使用前建议运行 `doctor --render-check --json`，实际检查 PDF、公式和图表渲染。
+安装。上面的命令会实际检查 PDF、公式和图表渲染，不只是检查可执行文件是否存在。
 
 转换文件：
 
@@ -72,7 +82,7 @@ mdtopdf convert report.md -o report.pdf --overwrite
 跑仓库里的测试文档：
 
 ```powershell
-git clone https://github.com/ABClize/mdtopdf.git
+git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell
@@ -160,6 +170,13 @@ Markdown -> markdown-it-py HTML -> theme/custom CSS -> Chromium PDF
 同一次 Chromium 会话负责内置 KaTeX 和 Mermaid 渲染，等待字体和图片加载后
 打印 PDF。不再需要单独安装 Mermaid CLI、Node.js、WeasyPrint 或 MSYS2。
 浏览器在准备环境时安装，转换过程不会自动下载。
+
+## 从 0.2.x 升级
+
+命令名和 Python API 保持不变，但 PDF 引擎已从 WeasyPrint 换成 Chromium，不再提供旧引擎回退。
+升级自动化任务前，先检查浏览器，再用一份有代表性的文档试转。
+分页、页眉页脚、字体和自定义打印 CSS 的效果可能与旧版不同，需要查看实际 PDF。
+读取 JSON 的脚本也不要把旧后端的 render-method 值写死。完整变更见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 功能特性
 
@@ -363,7 +380,7 @@ Emoji 仍使用系统字体，现有 Linux 首选是单色 Noto Emoji，Noto Col
 ## 开发与发布检查
 
 ```powershell
-git clone https://github.com/ABClize/mdtopdf.git
+git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell

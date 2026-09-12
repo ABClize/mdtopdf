@@ -133,6 +133,9 @@ visual rendering through Chrome/PDFium or `pypdfium2`, especially for:
 - `README.md` is the English GitHub/PyPI long description.
 - `README_CN.md` is the Chinese GitHub entry point.
 - Keep commands in both READMEs consistent with the real CLI.
+- Also maintain `README.es-ES.md` when changing installation or runtime behavior.
+- Follow `docs/releasing.md` before a release; keep unreleased features distinct
+  from the current PyPI version.
 - The bundled skill is `mdtopdf/skills/SKILL.md`; README files should mention
   this path when describing Agent usage.
 - Do not add a Dockerfile unless the user explicitly asks for a maintained

@@ -1,7 +1,8 @@
 <h1 align="center">mdtopdf: Agent-friendly Markdown-to-PDF CLI</h1>
 
 <p align="center">
-  <a href="https://github.com/ABClize/mdtopdf/blob/main/README_CN.md">中文文档</a>
+  <a href="https://github.com/ABClize/mdtopdf/blob/main/README_CN.md">中文文档</a> |
+  <a href="https://github.com/ABClize/mdtopdf/blob/main/README.es-ES.md">Español</a>
 </p>
 
 <p align="center">
@@ -40,7 +41,18 @@ command-line interface where the style can be defined up front.
 
 ## Quick start
 
-Install from PyPI:
+> This README describes **0.3.0, in preparation**. PyPI currently provides 0.2.2
+> with the previous renderer. Browser discovery, stdin conversion, and the
+> Chromium workflow below require the development version until 0.3.0 is released.
+
+Try the development version in a virtual environment:
+
+```shell
+python -m pip install "git+https://github.com/ABClize/mdtopdf.git@feature/chromium-renderer"
+```
+
+Install the published release from PyPI (0.2.2; use its
+[versioned README](https://github.com/ABClize/mdtopdf/blob/v0.2.2/README.md)):
 
 ```shell
 python -m pip install agent-markdown-pdf
@@ -56,15 +68,16 @@ intentionally different from the command name.
 | Run the CLI | `mdtopdf` |
 | Import in Python | `mdtopdf` |
 
-Check the machine:
+For the development version, check the machine before the first conversion:
 
 ```shell
-mdtopdf doctor --json
+mdtopdf doctor --render-check --json
 ```
 
-An installed Chrome, Edge, or Chromium is discovered automatically. If no browser
-is found, follow [Browser setup](#browser-setup). Use `doctor --render-check --json`
-to test PDF, math, and diagram rendering before the first job.
+The package installs the Python dependencies, including Playwright. You also need
+a compatible Chromium browser and the fonts your documents use. An installed
+Chrome, Edge, or Chromium is discovered automatically; if none is found, follow
+[Browser setup](#browser-setup). This check actually renders PDF, math, and diagrams.
 
 Convert a file:
 
@@ -75,7 +88,7 @@ mdtopdf convert report.md -o report.pdf --overwrite
 Try the bundled visual test document:
 
 ```shell
-git clone https://github.com/ABClize/mdtopdf.git
+git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell
@@ -172,6 +185,15 @@ One Chromium session renders bundled KaTeX and Mermaid, waits for fonts and
 images, and prints the PDF. No separate Mermaid CLI, Node.js installation,
 WeasyPrint, or MSYS2 setup is needed. Browser installation is an explicit setup
 step; conversion never downloads a browser.
+
+### Upgrading from 0.2.x
+
+The command name and Python API stay the same, but the PDF engine changes from
+WeasyPrint to Chromium. There is no WeasyPrint fallback. Install/check the browser,
+then render a representative document before upgrading an automated workflow.
+Page breaks, headers/footers, fonts, and custom paged-media CSS may differ.
+JSON consumers should accept the new render-method value rather than hard-code
+the old backend. See the [release notes](https://github.com/ABClize/mdtopdf/blob/main/CHANGELOG.md).
 
 ## Features
 
@@ -393,7 +415,7 @@ content when opened elsewhere.
 ## Development
 
 ```shell
-git clone https://github.com/ABClize/mdtopdf.git
+git clone --branch feature/chromium-renderer https://github.com/ABClize/mdtopdf.git
 cd mdtopdf
 python -m pip install -e ".[dev]"
 python -m playwright install chromium --no-shell
