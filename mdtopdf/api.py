@@ -3,7 +3,7 @@
 These functions are the supported import surface for Python callers. They use
 the same pipeline as the CLI: markdown-it-py parsing, Obsidian compatibility
 preprocessing, safe HTML filtering, KaTeX math, Mermaid diagrams, theme CSS, and
-WeasyPrint PDF output.
+Chromium PDF output.
 """
 
 from __future__ import annotations
@@ -101,7 +101,7 @@ def markdown_to_pdf(
         title: Optional document title passed through to HTML rendering.
         theme: Built-in theme name. The v1 package includes ``default``.
         custom_css: Raw CSS appended after built-in rendering CSS.
-        base_url: Base directory or URL used by WeasyPrint to resolve relative
+        base_url: Base directory or URL used by Chromium to resolve relative
             image, stylesheet, and link targets.
         strict: Reject warnings without replacing existing output.
         resource_dir: Optional local directory used to resolve bare image names.
@@ -119,7 +119,7 @@ def markdown_to_pdf(
 
     Raises:
         FileExistsError: If ``output_path`` exists and ``overwrite`` is false.
-        RuntimeError: If WeasyPrint or its native dependencies cannot load.
+        RuntimeError: If Chromium or its runtime dependencies cannot load.
     """
 
     output = Path(output_path).expanduser()
@@ -131,6 +131,7 @@ def markdown_to_pdf(
     synthetic_source = Path.cwd() / "markdown.md"
     rendered = render_markdown_to_html(
         markdown_text,
+        _defer_browser=True,
         title=title,
         theme=theme,
         custom_css=custom_css,
@@ -173,7 +174,7 @@ def markdown_to_pdf(
         "page_numbers": bool(include_page_footer and page_numbers),
         "font_check": summarize_font_usage(font_usage),
         "warnings": warnings,
-        "method": "markdown-it-py+weasyprint",
+        "method": "markdown-it-py+chromium",
     }
 
 

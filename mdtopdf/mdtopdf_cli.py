@@ -22,6 +22,9 @@ def _error_result(exc: Exception) -> dict[str, Any]:
     result = {"ok": False, "error": str(exc), "error_type": type(exc).__name__}
     if hasattr(exc, "warnings"):
         result["warnings"] = exc.warnings
+    for field in ("error_code", "hint"):
+        if getattr(exc, field, None):
+            result[field] = getattr(exc, field)
     return result
 
 
@@ -95,7 +98,7 @@ def _emit_warnings(data: dict[str, Any]) -> None:
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
 @click.pass_context
 def cli(ctx: click.Context, json_output: bool) -> None:
-    """Convert Markdown files to themed PDFs with markdown-it-py and WeasyPrint."""
+    """Convert Markdown files to themed PDFs with markdown-it-py and Chromium."""
 
     ctx.ensure_object(dict)
     ctx.obj["json"] = json_output
@@ -254,7 +257,7 @@ def html(
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
 @click.pass_context
 def doctor(ctx: click.Context, json_output: bool, render_check: bool) -> None:
-    """Check Python and native WeasyPrint dependencies."""
+    """Check Python, Chromium, bundled renderers, and fonts."""
 
     try:
         result = run_doctor(render_check=render_check)

@@ -29,14 +29,18 @@ def main():
     assert package.joinpath("skills/SKILL.md").is_file()
     assert package.joinpath("themes/default.css").is_file()
     assert package.joinpath("vendor/katex/dist/fonts/KaTeX_Main-Regular.woff2").is_file()
+    assert package.joinpath("vendor/mermaid/mermaid.min.js").is_file()
+    assert package.joinpath("vendor/browser-render.js").is_file()
     with tempfile.TemporaryDirectory(prefix="mdtopdf-wheel-") as directory:
         source = Path(directory) / "report.md"
-        source.write_text("# Wheel check\n\n0123456789\n\n$x^2 + 1$\n", encoding="utf-8")
+        source.write_text("# Wheel check\n\n0123456789\n\n$x^2 + 1$\n\n~~~mermaid\ngraph TD; A-->B\n~~~\n", encoding="utf-8")
         result = json.loads(run("convert", str(source), "--strict", "--json"))
         assert result["ok"] and result["warnings"] == []
         assert Path(result["output"]).read_bytes().startswith(b"%PDF-")
         preview = json.loads(run("html", str(source), "--json"))
-        assert "katex" in Path(preview["output"]).read_text(encoding="utf-8")
+        html = Path(preview["output"]).read_text(encoding="utf-8")
+        assert "katex-html" in html and "<svg" in html
+        assert "data-mdtopdf-mermaid=" not in html
     print(f"Installed wheel {version} passed: {package_path}")
 
 

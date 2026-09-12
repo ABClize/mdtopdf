@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE"]
-keywords = ["markdown", "pdf", "markdown-to-pdf", "weasyprint", "obsidian", "cli", "agent", "automation", "json"]
+keywords = ["markdown", "pdf", "markdown-to-pdf", "chromium", "obsidian", "cli", "agent", "automation", "json"]
 authors = [
   { name = "rainp" }
 ]
@@ -35,10 +35,7 @@ dependencies = [
   "markdown-it-py>=3.0.0",
   "mdit-py-plugins>=0.4.0",
   "pygments>=2.0.0",
-  "latex2mathml>=3.81.0",
-  "matplotlib>=3.10.0",
-  "mini-racer>=0.14.1",
-  "weasyprint>=69.0",
+  "playwright>=1.51,<2",
   "tinycss2>=1.4.0",
   "fonttools[woff]>=4.59.2",
 ]
@@ -49,6 +46,8 @@ dev = [
   "build>=1.2.0",
   "twine>=5.0.0",
   "pypdfium2>=4.30.0",
+  "pillow>=10.0.0",
+  "tomli>=2.0; python_version < '3.11'",
 ]
 
 [project.scripts]
@@ -64,6 +63,10 @@ include = ["mdtopdf", "mdtopdf.*"]
 
 [tool.setuptools.package-data]
 mdtopdf = [
+  "vendor/browser-render.js",
+  "vendor/mermaid/*.js",
+  "vendor/mermaid/LICENSE",
+  "vendor/mermaid/NOTICE.md",
   "themes/*.css",
   "skills/*.md",
   "vendor/katex/LICENSE",

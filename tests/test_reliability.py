@@ -123,19 +123,17 @@ def test_fontconfig_emoji_not_also_reported_missing(monkeypatch):
     assert 'Noto Emoji' not in group['missing']
 
 
-def test_missing_mermaid_is_reported(monkeypatch, tmp_path):
-    monkeypatch.setattr(markdown, 'find_mermaid_backend', lambda: None)
+def test_missing_browser_is_reported(monkeypatch, tmp_path):
+    monkeypatch.setenv('MDTOPDF_BROWSER_EXECUTABLE', str(tmp_path / 'missing-browser'))
     source = tmp_path / 'report.md'
-    source.write_text('```mermaid\ngraph TD; A-->B\n```', encoding='utf-8')
-    result = convert_markdown_file_to_html(source)
-    assert any(w['type'] == 'mermaid_unavailable' for w in result['warnings'])
+    source.write_text('~~~mermaid\ngraph TD; A-->B\n~~~', encoding='utf-8')
+    with pytest.raises(RuntimeError) as exc:
+        convert_markdown_file_to_html(source)
+    assert exc.value.error_code == 'browser_missing'
 
 
-def test_math_fallback_is_reported(monkeypatch):
-    def fail(*args, **kwargs):
-        raise RuntimeError('KaTeX unavailable')
-    monkeypatch.setattr(markdown, 'render_katex_to_html', fail)
-    rendered = markdown.render_markdown_to_html('$x^2$')
+def test_math_fallback_is_reported():
+    rendered = markdown.render_markdown_to_html(r'$\unknowncommand{x}$')
     assert any(w['type'] == 'math_fallback' for w in rendered.warnings)
 
 
@@ -186,13 +184,13 @@ def test_atomic_pdf_output_preserves_file_mode(tmp_path, existing):
 
 
 def test_failed_pdf_write_preserves_output_and_cleans_temporary_files(monkeypatch, tmp_path):
-    from weasyprint import HTML
+    from mdtopdf.core import output as output_module
 
-    def fail(self, target, **kwargs):
-        Path(target).write_bytes(b'incomplete')
+    def fail(html, *, output_path, **kwargs):
+        Path(output_path).write_bytes(b'incomplete')
         raise RuntimeError('Render failed')
 
-    monkeypatch.setattr(HTML, 'write_pdf', fail)
+    monkeypatch.setattr(output_module, 'render_document', fail)
     output = tmp_path / 'report.pdf'
     output.write_bytes(b'previous valid output')
     with pytest.raises(RuntimeError, match='Render failed'):
@@ -236,7 +234,7 @@ def test_real_latin_font_face_does_not_claim_cjk_coverage(monkeypatch, tmp_path)
 
 def test_doctor_render_check_failure_changes_ok(monkeypatch):
     monkeypatch.setattr(doctor_module, '_check_python_package', lambda name: {'ok': True})
-    monkeypatch.setattr(doctor_module, '_run_render_checks', lambda mermaid: {'pdf': {'ok': False}})
+    monkeypatch.setattr(doctor_module, '_run_render_checks', lambda: {'pdf': {'ok': False}})
     result = doctor_module.run_doctor(render_check=True)
     assert not result['ok']
     assert result['render_checks']['pdf']['ok'] is False
@@ -250,9 +248,8 @@ def test_doctor_fast_mode_does_not_render(monkeypatch):
 
 
 def test_strict_html_does_not_replace_source_on_warning(monkeypatch, tmp_path):
-    monkeypatch.setattr(markdown, 'find_mermaid_backend', lambda: None)
     source = tmp_path / 'same.md'
-    content = '```mermaid\ngraph TD; A-->B\n```'
+    content = r'$\unknowncommand{x}$'
     source.write_text(content, encoding='utf-8')
     result = CliRunner().invoke(cli, ['html', str(source), '-o', str(source), '--overwrite', '--strict', '--json'])
     assert result.exit_code == 1

@@ -220,13 +220,13 @@ The image below is a local SVG used to check relative paths, image centering, ma
 
 ## 10. Mermaid
 
-If `mmdc` is installed on the machine, the Mermaid blocks below render as SVG. Otherwise they remain as code blocks, which makes the fallback path visible.
+Bundled Mermaid renders these diagrams as SVG in Chromium; no separate Mermaid CLI is required.
 
 ```mermaid
 flowchart LR
     A[Markdown] --> B[markdown-it-py]
     B --> C[HTML + CSS]
-    C --> D[WeasyPrint]
+    C --> D[Chromium]
     D --> E[PDF]
 ```
 
@@ -234,7 +234,7 @@ flowchart LR
 sequenceDiagram
     participant U as User
     participant C as CLI
-    participant W as WeasyPrint
+    participant W as Chromium
     U->>C: convert input.md
     C->>C: render Markdown to HTML
     C->>W: write_pdf()

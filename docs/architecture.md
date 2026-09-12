@@ -10,65 +10,66 @@ project files, sessions, REPL mode, undo/redo, and preview state. The conversion
 pipeline is fixed:
 
 ```text
-Markdown -> markdown-it-py HTML -> default/custom CSS -> WeasyPrint PDF
+Markdown -> markdown-it-py HTML -> default/custom CSS -> Chromium PDF
 ```
 
 Pandoc is not used or required.
 
 ## Backend
 
-The rendering backend is the Python `weasyprint` package. WeasyPrint itself
-still depends on native libraries for text layout and drawing, including Pango,
-GLib, and Cairo. Those native libraries are not bundled by this package and are
-not installed automatically on Windows.
+`core/browser.py` owns one isolated headless Chromium session via Python
+Playwright. The Markdown parser emits encoded math/Mermaid placeholders;
+`vendor/browser-render.js` renders them with bundled KaTeX/mhchem and Mermaid.
+PDF conversion defers placeholder resolution until this session, waits for
+fonts/images, then prints with CSS page size, margins, backgrounds, tags, and
+outline. No separate Mermaid process or second PDF engine is retained.
 
-The CLI provides `doctor --json` so callers can detect whether Python
-dependencies, native libraries, recommended fallback fonts, and the optional
-Mermaid renderer are available before attempting a conversion.
-Conversion also checks the final CSS font stacks after theme and custom CSS are
-combined. Missing fonts are surfaced as warnings in text output and as
-structured `warnings` entries in JSON results; by default they do not stop PDF
-generation. Fontconfig is preferred when available, with Matplotlib discovery as
-a fallback. Local font-face sources are validated with fontTools; remote sources
-remain unverified during static inspection.
+The synchronous API works inside an existing asyncio loop by running its
+private event loop in a worker thread. Each conversion closes its browser in
+a finally block and has a bounded timeout. There is no persistent daemon or
+personal browser profile.
 
-Code blocks are identified using CommonMark token source maps before Obsidian
-and safe-HTML preprocessing. Their original Markdown is restored before final
-parsing, so code inside lists and blockquotes remains literal.
+HTML export returns static rendered math/SVG rather than browser bootstrap
+scripts. Plain HTML without math/Mermaid does not need Chromium. File-based
+HTML uses the same resource base as PDF; standalone resource URLs may still
+refer to files in the installed package.
 
-`core/diagnostics.py` collects document-local warnings, including math fallback,
-missing Mermaid, and material WeasyPrint resource/font errors. Context-local
-collectors keep nested or concurrent conversions separate. Browser-only CSS
-warnings from the shared theme are not treated as missing-content failures.
-`core/output.py` is the common PDF writer for file and string APIs: it renders
-to a temporary sibling file and replaces the destination after validation.
-`strict=True` / `--strict` raises on warnings before replacement, preserving an
-existing destination. Explicit same-path input/output with overwrite remains
-supported. HTML previews only run static/render-preparation diagnostics; they do
-not verify that images can be loaded by a browser or the PDF engine.
+`core/output.py` writes to a temporary sibling and atomically replaces the
+destination only after warning checks pass. Strict failures preserve the old
+output. Explicit same-path conversion with overwrite remains supported.
+`core/diagnostics.py` isolates warnings per conversion. Invalid KaTeX falls
+back to visible source with a warning; a Mermaid render failure is an error,
+not a silent code-block fallback.
 
-The basic doctor checks imports and tool discovery. `doctor --render-check`
-also renders a sample PDF with math and, if installed, a Mermaid diagram.
-Font availability and successful smoke rendering are not visual-parity guarantees.
-The CLI returns exit 1 when doctor reports `ok: false`; usage errors return 2,
-including a JSON error when `--json` is requested.
+`doctor --json` checks Python imports, browser executable, bundled render
+assets, and fonts. It does not launch Chromium. `--render-check` exercises
+PDF, KaTeX, and Mermaid together; a successful probe is not a visual-parity
+guarantee. Browser failures preserve the original error, error_code, and hint.
+The CLI returns 1 for failed doctor/runtime/strict checks and 2 for usage errors.
 
-The default theme uses a PDFium-safe Latin-first body font stack. Latin fonts
-come before CJK fonts so ASCII digits, dates, versions, and page counters are
-not embedded into CJK font subsets that some Chrome/PDFium renderers display
-incorrectly. Chinese text still falls back to the CJK side of the stack. On
-Linux, the supported runtime baseline is Liberation/DejaVu for Latin text and
-digits, Noto Sans CJK SC for Chinese, Cascadia Mono / Cascadia Code where
-available for code blocks, and STIX for math fallback. Emoji spans prefer a
-monochrome emoji font such as Noto Emoji on Linux because color emoji fonts can
-render too small or misaligned in WeasyPrint/Pango/Cairo/PDFium output.
+Font discovery prefers Fontconfig, otherwise fontTools reads system font
+directories and Windows font registrations. CSS font stacks and local font
+files are checked statically; remote fonts remain unverified until rendering.
+Body/code/emoji fonts are not distributed. Keep the Latin-first theme order,
+Linux open fonts, and the existing Windows font stack. See README platform
+notes for setup.
 
-These body, code, and emoji fonts are not bundled in the Python wheel. Public
-Linux containers should install redistributable open fonts such as fontconfig,
-Noto CJK, Noto Emoji, Liberation, DejaVu, STIX, and Cascadia Code where
-available. Microsoft YaHei and Segoe UI Emoji may appear in CSS fallback lists
-for systems that already provide them, but they are not Linux dependencies and
-must not be bundled in the project, wheel, release artifacts, or public images.
+Code blocks are protected using CommonMark source maps before Obsidian and
+safe-HTML preprocessing. Their contents are restored before final parsing.
+
+## Security Boundary
+
+Chromium's OS sandbox stays enabled. Linux callers need a non-root account
+and host/container policies permitting the browser sandbox. Conversion never
+installs browsers or turns off the sandbox automatically.
+
+A restrictive CSP is inserted before document content. Only nonce-bearing
+package scripts execute; document scripts, frames, objects, and connections
+are blocked, including with unsafe HTML. Playwright routes allow the local
+document plus image/style/font resources. This is **not** filesystem or network
+isolation: allowed resources can read local or remote URLs. Isolate untrusted
+documents at the deployment boundary. Exported unsafe HTML remains trusted
+content when opened elsewhere.
 
 ## Markdown Support
 
@@ -92,25 +93,24 @@ The parser is `markdown-it-py` with selected plugins:
   `<span>` output, and color-only styles on text-formatting tags are preserved.
   HTML comments outside code are hidden instead of printed.
 - LaTeX math formulas via `mdit-py-plugins` dollar math and amsmath plugins,
-  rendered offline to static KaTeX HTML with the Python `mini-racer` package.
+  rendered offline to static KaTeX HTML in Chromium.
   The package vendors KaTeX JavaScript, CSS, and fonts, so users do not need
   Node.js, remote JavaScript, or CDN assets for math rendering.
-- Mermaid fenced code blocks rendered to SVG only through local Mermaid CLI
-  (`mmdc`); when `mmdc` is missing, Mermaid blocks remain highlighted code
+- Mermaid fenced code blocks rendered to SVG using bundled Mermaid in Chromium
 
 Raw HTML input is disabled by default except for the safe authoring subset. This
 keeps untrusted Markdown from being passed straight through to the PDF renderer
 as active HTML. Trusted local Markdown can opt into raw HTML with
 `convert --unsafe-html`.
-This filtering is not a resource sandbox: WeasyPrint can still load local and
+This filtering is not a resource sandbox: Chromium can still load local and
 remote resources referenced by ordinary Markdown images and CSS. Callers must
 provide filesystem and network isolation when rendering untrusted documents.
 
 ## Command Surface
 
 - `mdtopdf doctor --json`
-  - Checks Python imports, WeasyPrint native libraries, optional Mermaid
-    support, recommended fallback fonts, and returns recommendations for the
+  - Checks Python imports, Chromium discovery, bundled Mermaid/KaTeX
+    assets, recommended fallback fonts, and returns recommendations for the
     caller.
 - `mdtopdf html INPUT.md -o OUTPUT.html [--json] [--unsafe-html]`
   - Uses the same Markdown, Obsidian compatibility, math, Mermaid, theme, and
@@ -152,15 +152,13 @@ frontmatter hiding, Obsidian comments, wikilinks, emphasis compatibility, safe
 HTML handling, Obsidian callouts, KaTeX math, Mermaid diagrams, and the selected
 PDF theme.
 
-## Windows Native Dependency Notes
+## Browser Installation
 
-On Windows, a typical MSYS2 setup is:
-
-```powershell
-winget install MSYS2.MSYS2
-pacman -S mingw-w64-x86_64-pango
-setx WEASYPRINT_DLL_DIRECTORIES "D:\Environment\msys64\mingw64\bin"
-```
-
-The CLI does not run these commands automatically. `doctor --json` reports the
-current environment and suggests fixes when native libraries are missing.
+Install the Python package, then explicitly run
+`python -m playwright install chromium --no-shell`. For an existing recent
+Chrome/Edge, set `MDTOPDF_BROWSER_EXECUTABLE`. The legacy
+`PUPPETEER_EXECUTABLE_PATH` remains a fallback. Linux system dependencies can
+be prepared with `python -m playwright install-deps chromium`.
+Browser/driver versions should be pinned by the deployment when reproducibility
+is required. Old WeasyPrint-specific custom CSS may require adjustment: the
+default theme is preserved, but Chromium is not an identical paged-media engine.

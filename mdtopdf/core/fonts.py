@@ -3,6 +3,8 @@ from __future__ import annotations
 import shutil
 import subprocess
 import base64
+import os
+import platform
 from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
@@ -11,7 +13,7 @@ from urllib.request import url2pathname
 from typing import Any
 
 import tinycss2
-from fontTools.ttLib import TTFont
+from fontTools.ttLib import TTFont, TTCollection
 
 
 GENERIC_FONT_FAMILIES = {
@@ -148,12 +150,57 @@ def available_font_names() -> set[str]:
                 return _FontNames(names, backend="fontconfig")
         except (OSError, subprocess.SubprocessError, UnicodeError):
             pass
-    from matplotlib import font_manager
+    names = set()
+    for path in _system_font_files():
+        try:
+            info = path.stat()
+            names.update(_file_font_names(str(path), info.st_mtime_ns, info.st_size))
+        except Exception:
+            # A malformed individual font must not hide the rest of the inventory.
+            continue
+    return _FontNames(names, backend="fonttools")
 
-    return _FontNames(
-        {font.name for font in font_manager.fontManager.ttflist},
-        backend="matplotlib.font_manager",
-    )
+
+def _system_font_files():
+    system = platform.system()
+    if system == "Windows":
+        directories = [Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts",
+                       Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "Microsoft/Windows/Fonts"]
+    elif system == "Darwin":
+        directories = [Path("/System/Library/Fonts"), Path("/Library/Fonts"), Path.home() / "Library/Fonts"]
+    else:
+        directories = [Path("/usr/share/fonts"), Path("/usr/local/share/fonts"),
+                       Path.home() / ".local/share/fonts", Path.home() / ".fonts"]
+    files = set()
+    for directory in directories:
+        if directory.is_dir():
+            files.update(p for p in directory.rglob("*") if p.suffix.lower() in {".ttf", ".otf", ".ttc", ".otc"})
+    if system == "Windows":
+        import winreg
+        for hive, directory in ((winreg.HKEY_LOCAL_MACHINE, directories[0]), (winreg.HKEY_CURRENT_USER, directories[1])):
+            try:
+                with winreg.OpenKey(hive, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts") as key:
+                    for index in range(winreg.QueryInfoKey(key)[1]):
+                        value = winreg.EnumValue(key, index)[1]
+                        if isinstance(value, str):
+                            path = Path(value)
+                            files.add(path if path.is_absolute() else directory / path)
+            except OSError:
+                pass
+    return files
+
+
+@lru_cache(maxsize=2048)
+def _file_font_names(path, mtime_ns, size):
+    collection = TTCollection(path, lazy=True) if Path(path).suffix.lower() in {".ttc", ".otc"} else None
+    fonts = collection.fonts if collection else [TTFont(path, lazy=True)]
+    try:
+        return frozenset(name.toUnicode() for font in fonts for name in font["name"].names if name.nameID in {1, 16})
+    finally:
+        for font in fonts:
+            font.close()
+        if collection:
+            collection.close()
 
 
 class _FontNames(set):
@@ -176,7 +223,7 @@ def match_font_name(family: str, available: set[str]) -> str | None:
 def inspect_recommended_font_groups(platform_system: str | None = None) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ok": False,
-        "backend": "matplotlib.font_manager",
+        "backend": "fonttools",
         "groups": {},
         "error": None,
     }
@@ -235,7 +282,7 @@ def inspect_css_font_usage(
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
         "ok": True,
-        "backend": "matplotlib.font_manager",
+        "backend": "fonttools",
         "font_faces": [],
         "stacks": [],
         "warnings": [],
@@ -336,7 +383,7 @@ def inspect_css_font_usage(
                     "type": "missing_font_stack",
                     "message": (
                         "No installed or @font-face font matched this CSS font-family stack; "
-                        "WeasyPrint will choose a fallback."
+                        "Chromium will choose a fallback."
                     ),
                     "families": checkable,
                     "declaration": stack["declaration"],

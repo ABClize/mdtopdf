@@ -94,6 +94,7 @@ def convert_markdown_file_to_html(
     resolved_resource_dir = resolve_resource_dir(resource_dir)
     rendered = render_markdown_to_html(
         markdown_text,
+        _browser_base_url=html_base_url,
         title=title or source.stem,
         theme=theme,
         custom_css=custom_css,
