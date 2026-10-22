@@ -39,6 +39,10 @@ Agent 很擅长写 Markdown，但是它用各种方式导出的pdf样式无法�
 
 ## 快速上手
 
+**开发版本说明：**下文的 Pele 图表渲染属于尚未发布的源码变更，当前 PyPI
+版本 0.3.0 仍使用 Mermaid.js。发布前可在此源码目录运行
+`python -m pip install -e ".[dev]"` 体验 Pele。
+
 在所用的 Python 环境中，从 PyPI 安装：
 
 ```powershell
@@ -161,7 +165,8 @@ mdtopdf doctor --render-check --json
 ## 输出效果
 
 下面 6 张图来自 `examples/visual-test-cn.md`，能看到标题、Callout、表格、代码、
-公式、图片、Mermaid 和分页的实际效果。
+公式、图片、Mermaid 和分页的实际效果。截图使用当前开发版生成，图表由 Pele
+渲染，PDF 由 Chromium 输出。
 
 | 第 1 页 | 第 2 页 |
 | --- | --- |
@@ -177,9 +182,75 @@ mdtopdf doctor --render-check --json
 Markdown -> markdown-it-py HTML -> theme/custom CSS -> Chromium PDF
 ```
 
-同一次 Chromium 会话负责内置 KaTeX 和 Mermaid 渲染，等待字体和图片加载后
-打印 PDF。不再需要单独安装 Mermaid CLI、Node.js、WeasyPrint 或 MSYS2。
+同一次 Chromium 会话用内置 KaTeX 渲染公式，用内置 Pele 渲染 Mermaid 代码块，
+等待字体和图片加载后打印 PDF。不再需要单独安装 Mermaid CLI、Node.js、WeasyPrint 或 MSYS2。
 浏览器在准备环境时安装，转换过程不会自动下载。
+
+### 使用 Pele 渲染 Mermaid 图表（未发布）
+
+继续使用 `mermaid` 或 `mmd` 代码块：
+
+````markdown
+```mermaid
+flowchart LR
+    A[草稿] --> B[审阅] --> C[PDF]
+```
+````
+
+Pele 生成的 SVG 用于 HTML 预览和 PDF；图表标签中的 `$$...$$` 公式由内置
+KaTeX 排版。默认 SVG 主题沿用文档的柔和淡紫配色和 Latin-first 字体栈，
+使用淡紫节点、深色文字和灰紫连线。
+
+需要统一调整正文与图表配色时，通过 `--css` 传入 CSS 文件：
+
+```css
+:root {
+  --mdtopdf-accent: #7352a6;
+  --mdtopdf-surface: #f3effa;
+}
+.mermaid-diagram {
+  --pele-border: #b5a2cf;
+}
+```
+
+共享配色变量包括 `--mdtopdf-background`、`--mdtopdf-text`、
+`--mdtopdf-heading`、`--mdtopdf-accent`、`--mdtopdf-muted`、`--mdtopdf-surface`、
+`--mdtopdf-surface-alt`、`--mdtopdf-border` 和 `--mdtopdf-critical`。
+二至六级标题另有 `--mdtopdf-heading-2` 至 `--mdtopdf-heading-6`。
+仍可通过局部 `--pele-*` 变量单独覆盖图表样式。
+
+图表布局会参考 `@page` 指定的纸张尺寸和页边距，也支持命名页面。由于此时
+尚未分页，遇到匹配的首页、左页、右页规则时，会保守采用其中最小的可用宽度
+和高度，保留源码指定的图表方向。这覆盖常见打印 CSS；复杂页面规则仍需
+检查最终 PDF。
+
+图表缩放后，文字预计小于 **8pt** 时，结果会包含 `diagram_text_too_small`
+警告，并给出图表序号和预计打印字号。优先考虑使用更宽纸张、增大标签字体或
+拆分图表。可在 CSS 中设置
+`.mermaid-diagram { --mdtopdf-diagram-min-font-size: 9pt; }` 调整检查阈值；
+该变量不会改变实际字号。`--strict` 会拒绝这类警告，并保留已有输出文件。
+
+图表失败时返回 `error_code: "diagram_render_failed"`、修复提示 `hint` 和
+`error_details`，包含 Pele 错误代码、从 1 开始的图表序号及源码片段。能够
+确认位置时，`diagram_line`、`diagram_column`、`source_line` 分别指向原始
+图表的行列和 Markdown 原文行号，`source_start_line` 表示代码块内容的首行。
+Pele 自身的 `renderer_line` / `renderer_column` 单独保留，因为其预处理
+可能改变行号；无法确认的位置会省略。
+
+Pele 使用自己的布局，节点位置和连线可能变化。Mermaid 的 `theme` 和
+`themeVariables` 配色不生效，请改用上述 CSS 变量；不支持任意 HTML 标签或
+外部 Mermaid 插件。升级时请检查现有图表的 HTML 预览和最终 PDF。详见 Pele
+[兼容性说明](https://pele.run/compatibility)和[主题变量](https://pele.run/theming)。
+
+当前内置 Pele **1.8.0** 的 Sankey 节点名称必须使用 ASCII 字符；中文名称即使
+加引号也会解析失败。
+
+可用 `examples/pele-compatibility.md` 和配套 CSS 生成图表兼容性验收样例：
+
+```shell
+mdtopdf html examples/pele-compatibility.md --css examples/pele-compatibility.css -o pele-compatibility.html --overwrite
+mdtopdf convert examples/pele-compatibility.md --css examples/pele-compatibility.css -o pele-compatibility.pdf --overwrite
+```
 
 ## 从 0.2.x 升级
 
@@ -193,7 +264,7 @@ Markdown -> markdown-it-py HTML -> theme/custom CSS -> Chromium PDF
 | 功能 | 说明 |
 | --- | --- |
 | JSON 输出 | `convert`、`html`、`doctor`、`themes list` 都支持 `--json`。 |
-| 环境检查 | `doctor --json` 会检查 Python 包、浏览器路径、内置 KaTeX/Mermaid 资源和推荐字体。 |
+| 环境检查 | `doctor --json` 会检查 Python 包、浏览器路径、内置 KaTeX/Pele 资源和推荐字体。 |
 | 本地渲染 | Markdown、CSS、数学公式、Mermaid SVG 生成和 PDF 导出都在本机完成。 |
 | HTML 预览 | 生成 standalone HTML，用来快速检查最终 PDF 之前的排版。 |
 | Obsidian 兼容 | 支持 wikilink、别名、frontmatter 隐藏、评论、高亮和 typed callout。 |
@@ -303,7 +374,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 `mdtopdf` 支持：
 
 - CommonMark
-- 表格
+- 表格按内容自适应列宽，长单词、编号和 URL 自动换行（未发布）
 - 删除线
 - 任务列表
 - 脚注
@@ -316,7 +387,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 - Obsidian 风格 callout，例如 `> [!note] Title`
 - 常见安全 HTML 标签，例如 `<br>`、`<kbd>`、`<mark>`、`<sup>`、`<sub>`
 - `$inline$`、`$$block$$` 和常见 `amsmath` 环境
-- 使用内置 Mermaid 在 Chromium 中渲染图表
+- 使用内置 Pele 在 Chromium 中渲染 Mermaid 代码块（未发布）
 
 默认情况下，`mdtopdf` 不会直接渲染任意原始 HTML；如果 Markdown 来源可信，可以显式加上 `--unsafe-html`。
 
@@ -406,8 +477,10 @@ python -m twine check dist/*
 
 ## 许可证
 
-MIT。内置 KaTeX 和 Mermaid 资源附带各自的 MIT 许可证，见
-`mdtopdf/vendor/katex/LICENSE` 和 `mdtopdf/vendor/mermaid/LICENSE`。
+MIT。内置 KaTeX 和 Pele 资源附带各自的 MIT 许可证，见
+`mdtopdf/vendor/katex/LICENSE` 和 `mdtopdf/vendor/pele/LICENSE`。
+`mdtopdf/vendor/pele/LICENSE` 还包含 Lucide 的 ISC 许可证；内置 Pele 的版本、
+来源和资源哈希记录在 `mdtopdf/vendor/pele/NOTICE.md`。
 
 `mdtopdf` 不内置中文正文字体，也不分发 emoji 字体、微软雅黑、苹方、Segoe UI、
 Segoe UI Emoji、Cascadia Code、Consolas 这类系统字体。默认主题会引用这些字体名，

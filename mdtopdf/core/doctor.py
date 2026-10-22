@@ -13,6 +13,7 @@ from pathlib import Path
 
 from mdtopdf.core.browser import BROWSER_ENV, inspect_browser
 from mdtopdf.core.fonts import inspect_recommended_font_groups
+from mdtopdf.core.mermaid import MERMAID_ASSET
 
 
 def run_doctor(*, render_check=False):
@@ -31,7 +32,7 @@ def run_doctor(*, render_check=False):
         "recommendations": [],
     }
     root = resources.files("mdtopdf")
-    for name, path in (("mermaid", "vendor/mermaid/mermaid.min.js"), ("katex", "vendor/katex/dist/katex.min.js")):
+    for name, path in (("mermaid", MERMAID_ASSET), ("katex", "vendor/katex/dist/katex.min.js")):
         exists = root.joinpath(path).is_file()
         result["tools"][name] = {"ok": exists, "backend": "bundled-javascript", "optional": False,
                                  "requires_network": False, "error": None if exists else "Bundled asset is missing."}

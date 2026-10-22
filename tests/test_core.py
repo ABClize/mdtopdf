@@ -691,7 +691,7 @@ def test_theme_loading():
     assert "blockquote.callout {" in css
     assert ".callout-warning" in css
     assert "border: 1px solid #d7e0ea;" in css
-    assert "table-layout: fixed;" in css
+    assert "table-layout: auto;" in table_block
     assert "border: 1px solid #cfdae8;" in table_block
     assert "border-radius: 8px;" in table_block
     assert "overflow: hidden;" in table_block
@@ -712,7 +712,7 @@ def test_theme_loading():
     assert ".mermaid-diagram {" in css
     mermaid_block = css.rsplit(".mermaid-diagram {", 1)[1].split("}", 1)[0]
     assert "background:" not in mermaid_block
-    assert "border:" not in mermaid_block
+    assert not any(line.strip().startswith("border:") for line in mermaid_block.splitlines())
     assert "border-radius:" not in mermaid_block
     assert "margin: 1.15em auto 1.25em;" in mermaid_block
     assert "max-width: 100%;" in mermaid_block
@@ -759,8 +759,8 @@ def test_theme_styles_obsidian_callouts_as_document_components():
     assert "border-radius: 8px;" in regular_quote_block
     assert "padding: 0.58em 0.82em 0.58em 1.05em;" in regular_quote_block
     assert "blockquote.callout {" in css
-    assert "background: #f5f9fd;" in callout_block
-    assert "border-left: 5px solid #0f6ea7;" in callout_block
+    assert "background: var(--mdtopdf-surface);" in callout_block
+    assert "border-left: 5px solid var(--mdtopdf-accent);" in callout_block
     assert "border: 1px solid #d6e3ef;" in callout_block
     assert "border-radius: 8px;" in callout_block
     assert "box-shadow: 0 4px 12px rgba(15, 42, 67, 0.05);" in css
@@ -854,15 +854,15 @@ def test_theme_uses_visible_italic_and_no_heading_underlines():
 
     assert "border-bottom: 4px solid #173b5c" not in css
     assert "border-bottom: 1.5px solid #b8d7ef" not in css
-    assert "h1 {\n  color: #173b5c;\n  font-size: 18pt;" in css
-    assert "h2 {\n  color: #256f8a;\n  font-size: 16.5pt;" in css
-    assert "h3 {\n  color: #9a3f65;\n  font-size: 15pt;" in css
+    assert "h1 {\n  color: var(--mdtopdf-heading);\n  font-size: 18pt;" in css
+    assert "h2 {\n  color: var(--mdtopdf-heading-2);\n  font-size: 16.5pt;" in css
+    assert "h3 {\n  color: var(--mdtopdf-heading-3);\n  font-size: 15pt;" in css
     assert "font-size: 23pt;" not in css
     assert "font-size: 27pt;" not in css
     assert "font-size: 28pt;" not in css
-    assert "h4 {\n  color: #5f55a4;\n  font-size: 13.5pt;" in css
-    assert "h5 {\n  color: #24765a;\n  font-size: 12.5pt;" in css
-    assert "h6 {\n  color: #a15c18;\n  font-size: 11.5pt;" in css
+    assert "h4 {\n  color: var(--mdtopdf-heading-4);\n  font-size: 13.5pt;" in css
+    assert "h5 {\n  color: var(--mdtopdf-heading-5);\n  font-size: 12.5pt;" in css
+    assert "h6 {\n  color: var(--mdtopdf-heading-6);\n  font-size: 11.5pt;" in css
     assert "em {" in css
     assert "font-style: italic;" in css
     assert "font-style: oblique;" not in css

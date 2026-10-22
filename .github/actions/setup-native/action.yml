@@ -7,11 +7,23 @@ runs:
       if: runner.os == 'Linux'
       shell: bash
       run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
+        # Prefer Ubuntu's HTTPS archives over the Azure mirror that can trickle
+        # large font downloads without triggering APT's inactivity timeout.
+        mirror_list=/etc/apt/apt-mirrors.txt
+        if [[ -f "$mirror_list" ]] && grep -q '^https://archive\.ubuntu\.com/ubuntu/' "$mirror_list"; then
+          sudo sed -i '\|^http://azure\.archive\.ubuntu\.com/ubuntu/|s/priority:1/priority:4/' "$mirror_list"
+        fi
+        # Bound mirror stalls and retry transient failures without hiding errors.
+        apt_options=(
+          -o Acquire::Retries=2
+          -o Acquire::http::Timeout=30
+          -o Acquire::https::Timeout=30
+        )
+        sudo apt-get "${apt_options[@]}" -o APT::Update::Error-Mode=any update
+        sudo apt-get "${apt_options[@]}" install -y --no-install-recommends \
           fontconfig poppler-utils fonts-dejavu-core fonts-liberation \
           fonts-noto-cjk fonts-noto-color-emoji fonts-stix
         if apt-cache show fonts-cascadia-code >/dev/null 2>&1; then
-          sudo apt-get install -y --no-install-recommends fonts-cascadia-code
+          sudo apt-get "${apt_options[@]}" install -y --no-install-recommends fonts-cascadia-code
         fi
         fc-cache -f

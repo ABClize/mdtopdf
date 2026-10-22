@@ -26,6 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-native
+        timeout-minutes: 5
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
@@ -66,7 +67,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-native
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -82,16 +82,14 @@ jobs:
           name: checked-distributions
           path: dist/
           if-no-files-found: error
-      - name: Download checked distributions
-        uses: actions/download-artifact@v8
-        with:
-          name: checked-distributions
-          path: ${{ runner.temp }}/checked-distributions
       - name: Install the wheel into a clean environment
         shell: bash
         run: |
           python -m venv "$RUNNER_TEMP/wheel-env"
-          "$RUNNER_TEMP/wheel-env/bin/python" -m pip install "$RUNNER_TEMP/checked-distributions/"*.whl
+          "$RUNNER_TEMP/wheel-env/bin/python" -m pip install "$GITHUB_WORKSPACE/dist/"*.whl
+      # Preserve checked distributions even if a font mirror is unavailable.
+      - uses: ./.github/actions/setup-native
+        timeout-minutes: 5
       - name: Select sandboxed browser for wheel
         shell: bash
         run: |

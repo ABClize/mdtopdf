@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mdtopdf README cover</title>
+<style>
+@page { size: 1600px 900px; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1600px; height: 900px; }
+body {
+  color: #111827;
+  font-family: "Liberation Sans", Arial, sans-serif;
+  background-color: #f4f8ff;
+  background-image: linear-gradient(#e2edf9 1px, transparent 1px),
+                    linear-gradient(90deg, #e2edf9 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+main { position: relative; width: 1600px; height: 900px; overflow: hidden; }
+h1, h2, p { margin: 0; }
+h1 { position: absolute; left: 92px; top: 116px; font-size: 88px; letter-spacing: -3px; }
+.subtitle { position: absolute; left: 94px; top: 224px; font-size: 29px; color: #64748b; }
+.badges { position: absolute; left: 92px; top: 280px; display: flex; gap: 10px; }
+.badge { padding: 7px 15px; border-radius: 24px; border: 1px solid; font-size: 19px; font-weight: bold; }
+.blue { color: #17677d; background: #e1f6fc; border-color: #ace5f4; }
+.green { color: #166534; background: #e9f8ed; border-color: #b0eabf; }
+.purple { color: #6d28d9; background: #f2ebff; border-color: #d9c2ff; }
+.flow { position: absolute; left: 92px; top: 340px; width: 596px; padding: 16px 30px;
+  border-radius: 13px; color: #f8fafc; background: #111827; font: 23px "DejaVu Sans Mono", monospace; }
+.command { position: absolute; left: 92px; top: 425px; width: 572px; height: 368px;
+  padding: 42px 30px 24px; border: 1px solid #d5e5f5; border-radius: 12px; background: white;
+  box-shadow: 0 18px 34px #0f172a12; }
+.command h2 { margin-bottom: 12px; font-size: 38px; letter-spacing: -1px; }
+.terminal { height: 248px; border-radius: 7px; background: #111827; padding: 16px 23px;
+  color: #f8fafc; font: 20px/28px "DejaVu Sans Mono", monospace; }
+.terminal-title { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; color: #9ca3af; }
+.dot { width: 20px; height: 20px; border-radius: 50%; background: #ff5f57; }
+.dot:nth-child(2) { background: #febc2e; }
+.dot:nth-child(3) { background: #28c840; margin-right: 3px; }
+.line { white-space: pre; }
+.number { display: inline-block; width: 52px; color: #94a3b8; }
+.cyan { color: #5eead4; }
+.light-blue { color: #93c5fd; }
+.yellow { color: #fde047; }
+.arrow { position: absolute; left: 698px; top: 586px; width: 68px; height: 24px;
+  border-radius: 20px; background: #2563eb; }
+.arrow::after { content: ""; position: absolute; left: 48px; top: -28px;
+  border-top: 40px solid transparent; border-bottom: 40px solid transparent; border-left: 64px solid #2563eb; }
+.preview-title { position: absolute; left: 842px; top: 116px; font-size: 38px; }
+.preview-caption { position: absolute; left: 842px; top: 162px; font-size: 23px; color: #64748b; }
+.page { position: absolute; width: 328px; border: 1px solid #80b1ff; box-shadow: 0 0 36px #33415529; }
+.page-one { left: 820px; top: 350px; }
+.page-two { left: 1198px; top: 350px; }
+.page-three { left: 1002px; top: 242px; width: 382px; }
+.tagline { position: absolute; left: 842px; top: 832px; color: #475569; font-size: 23px; }
+</style>
+</head>
+<body>
+<main class="document">
+  <h1>mdtopdf</h1>
+  <p class="subtitle">Agent-friendly Markdown-to-PDF CLI</p>
+  <div class="badges"><span class="badge blue">Local rendering</span><span class="badge green">JSON diagnostics</span><span class="badge purple">HTML preview</span></div>
+  <div class="flow">doctor --json → convert --json</div>
+  <section class="command">
+    <h2>Agent-ready command</h2>
+    <div class="terminal">
+      <div class="terminal-title"><span class="dot"></span><span class="dot"></span><span class="dot"></span>agent-run.ps1</div>
+      <div class="line cyan"><span class="number">1</span>mdtopdf doctor --json</div>
+      <div class="line"><span class="number">2</span></div>
+      <div class="line"><span class="number">3</span>mdtopdf convert report.md</div>
+      <div class="line light-blue"><span class="number">4</span>-o report.pdf</div>
+      <div class="line cyan"><span class="number">5</span>--overwrite --json</div>
+      <div class="line yellow"><span class="number">6</span># Local PDF + JSON result</div>
+    </div>
+  </section>
+  <div class="arrow"></div>
+  <h2 class="preview-title">Ready-to-share PDF</h2>
+  <p class="preview-caption">Real pages generated from examples/visual-test-en.md</p>
+  <img class="page page-one" src="pdf-page-en-1.png" alt="Rendered PDF page 1">
+  <img class="page page-two" src="pdf-page-en-2.png" alt="Rendered PDF page 2">
+  <img class="page page-three" src="pdf-page-en-3.png" alt="Rendered PDF page 3">
+  <p class="tagline">Markdown in. PDF out. JSON when agents need it.</p>
+</main>
+</body>
+</html>

@@ -4,7 +4,22 @@
 }
 
 :root {
-  color: #172033;
+  /* Shared lavender document/diagram palette; custom CSS can override it at :root. */
+  --mdtopdf-background: #ffffff;
+  --mdtopdf-text: #30283f;
+  --mdtopdf-heading: #173b5c;
+  --mdtopdf-heading-2: #256f8a;
+  --mdtopdf-heading-3: #9a3f65;
+  --mdtopdf-heading-4: #5f55a4;
+  --mdtopdf-heading-5: #24765a;
+  --mdtopdf-heading-6: #a15c18;
+  --mdtopdf-accent: #7352a6;
+  --mdtopdf-muted: #78658f;
+  --mdtopdf-surface: #f3effa;
+  --mdtopdf-surface-alt: #e9e1f3;
+  --mdtopdf-border: #b5a2cf;
+  --mdtopdf-critical: #a63d40;
+  color: var(--mdtopdf-text);
   font-family: "Segoe UI", Arial, "Liberation Sans", "DejaVu Sans", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", sans-serif;
   font-size: 11.5pt;
   line-height: 1.55;
@@ -12,8 +27,8 @@
 
 body {
   margin: 0;
-  background: #ffffff;
-  color: #172033;
+  background: var(--mdtopdf-background);
+  color: var(--mdtopdf-text);
 }
 
 .document {
@@ -28,7 +43,7 @@ body {
   }
 
   .document {
-    background: #ffffff;
+    background: var(--mdtopdf-background);
     box-shadow: 0 10px 32px rgba(15, 42, 67, 0.16);
     box-sizing: border-box;
     margin: 0 auto;
@@ -52,7 +67,7 @@ h6 {
 }
 
 h1 {
-  color: #173b5c;
+  color: var(--mdtopdf-heading);
   font-size: 18pt;
   letter-spacing: 0;
   margin-top: 0;
@@ -61,34 +76,34 @@ h1 {
 }
 
 h2 {
-  color: #256f8a;
+  color: var(--mdtopdf-heading-2);
   font-size: 16.5pt;
   margin-top: 1.65em;
   padding-bottom: 0.18em;
 }
 
 h3 {
-  color: #9a3f65;
+  color: var(--mdtopdf-heading-3);
   font-size: 15pt;
   margin-top: 1.35em;
 }
 
 h4 {
-  color: #5f55a4;
+  color: var(--mdtopdf-heading-4);
   font-size: 13.5pt;
   margin-top: 1.2em;
   margin-bottom: 0.45em;
 }
 
 h5 {
-  color: #24765a;
+  color: var(--mdtopdf-heading-5);
   font-size: 12.5pt;
   margin-top: 1.05em;
   margin-bottom: 0.35em;
 }
 
 h6 {
-  color: #a15c18;
+  color: var(--mdtopdf-heading-6);
   font-size: 11.5pt;
   margin-top: 0.95em;
   margin-bottom: 0.3em;
@@ -104,7 +119,7 @@ p {
 }
 
 a {
-  color: #0f6ea7;
+  color: var(--mdtopdf-accent);
   text-decoration: none;
 }
 
@@ -143,7 +158,7 @@ code {
   border-bottom-color: #7f9ab8;
   border-radius: 3px;
   box-shadow: inset 0 -1px 0 #d7e1ea;
-  color: #173b5c;
+  color: var(--mdtopdf-heading);
   font-family: "Cascadia Mono", "Cascadia Code", "Consolas", "Noto Sans Mono CJK SC", "Liberation Mono", "DejaVu Sans Mono", Menlo, Monaco, monospace;
   font-size: 0.86em;
   font-weight: 500;
@@ -227,7 +242,7 @@ table {
   font-size: 11.2pt;
   overflow: hidden;
   margin: 1em 0 1.15em;
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
 }
 
@@ -250,13 +265,16 @@ td {
   border-bottom: 1px solid #cfdae8;
   border-right: 1px solid #cfdae8;
   line-height: 1.35;
+  /* Bound intrinsic sizing so long content does not starve short columns. */
+  max-width: 20em;
+  overflow-wrap: anywhere;
   padding: 0.38em 0.62em;
   text-align: center;
   vertical-align: middle;
 }
 
 th {
-  background: #173b5c;
+  background: var(--mdtopdf-heading);
   color: #ffffff;
   font-size: 11pt;
   font-weight: 700;
@@ -292,7 +310,7 @@ tbody tr:last-child td:last-child {
 }
 
 tbody tr:nth-child(odd) {
-  background: #ffffff;
+  background: var(--mdtopdf-background);
 }
 
 tbody td strong {
@@ -309,7 +327,7 @@ pre {
   border: 1px solid #d7e0ea;
   border-radius: 8px;
   box-shadow: 0 7px 18px rgba(15, 42, 67, 0.08);
-  color: #172033;
+  color: var(--mdtopdf-text);
   font-family: "Cascadia Mono", "Cascadia Code", "Consolas", "Noto Sans Mono CJK SC", "Liberation Mono", "DejaVu Sans Mono", Menlo, Monaco, monospace;
   font-size: 9.2pt;
   line-height: 1.48;
@@ -323,10 +341,12 @@ pre {
 pre::before {
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='8' viewBox='0 0 32 8'%3E%3Ccircle cx='4' cy='4' r='4' fill='%23ff5f56'/%3E%3Ccircle cx='16' cy='4' r='4' fill='%23ffbd2e'/%3E%3Ccircle cx='28' cy='4' r='4' fill='%2327c93f'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
+  break-after: avoid;
   content: "";
   display: block;
   height: 8px;
   margin: 0 0 0.78em 1px;
+  page-break-after: avoid;
   width: 32px;
 }
 
@@ -478,6 +498,7 @@ table.math-array td {
   border: 0;
   color: #15191f;
   font-weight: 400;
+  max-width: none;
   padding: 0 0.08em;
   text-align: center;
   vertical-align: middle;
@@ -538,6 +559,26 @@ table.math-array .math-inline {
 }
 
 .mermaid-diagram {
+  --pele-bg: var(--mdtopdf-background);
+  --pele-fg: var(--mdtopdf-text);
+  --pele-muted: var(--mdtopdf-muted);
+  --pele-line: var(--mdtopdf-muted);
+  --pele-surface: var(--mdtopdf-surface);
+  --pele-surface-alt: var(--mdtopdf-surface-alt);
+  --pele-border: var(--mdtopdf-border);
+  --pele-accent: var(--mdtopdf-accent);
+  --pele-critical: var(--mdtopdf-critical);
+  --pele-error: var(--mdtopdf-critical);
+  --pele-series-1: var(--mdtopdf-heading-2);
+  --pele-series-2: var(--mdtopdf-heading-3);
+  --pele-series-3: var(--mdtopdf-heading-4);
+  --pele-series-4: var(--mdtopdf-heading-5);
+  --pele-series-5: var(--mdtopdf-heading-6);
+  --pele-series-6: var(--mdtopdf-heading);
+  --pele-series-7: var(--mdtopdf-muted);
+  --pele-series-8: var(--mdtopdf-critical);
+  --pele-font-mono: "Cascadia Mono", "Cascadia Code", "Consolas", "Noto Sans Mono CJK SC", "Liberation Mono", "DejaVu Sans Mono", Menlo, Monaco, monospace;
+  --pele-radius: 5px;
   break-inside: avoid;
   margin: 1.15em auto 1.25em;
   max-width: 100%;
@@ -557,9 +598,9 @@ table.math-array .math-inline {
 }
 
 blockquote.callout {
-  background: #f5f9fd;
+  background: var(--mdtopdf-surface);
   border: 1px solid #d6e3ef;
-  border-left: 5px solid #0f6ea7;
+  border-left: 5px solid var(--mdtopdf-accent);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(15, 42, 67, 0.05);
   break-inside: avoid;
@@ -575,7 +616,7 @@ blockquote.callout p {
 
 blockquote.callout .callout-title {
   border-bottom: 1px solid #c9dff2;
-  color: #173b5c;
+  color: var(--mdtopdf-heading);
   font-size: 0.96em;
   font-weight: 800;
   line-height: 1.3;

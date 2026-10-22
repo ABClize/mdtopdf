@@ -25,8 +25,15 @@ install browsers during conversion retries.
 Fonts come from the environment. On Linux use Liberation/DejaVu for Latin,
 Noto Sans CJK SC for Chinese, and Cascadia or an available monospace font for
 code. Follow the README for emoji and platform details. Do not download
-Microsoft fonts. Mermaid and KaTeX are bundled; no separate mmdc, npm, or
+Microsoft fonts. Pele (for Mermaid syntax) and KaTeX are bundled; no separate mmdc, npm, or
 WeasyPrint installation is needed.
+
+This checkout's Pele migration is unreleased; PyPI 0.3.0 still uses Mermaid.js.
+Keep `mermaid` / `mmd` fences. Use shared `--mdtopdf-*` palette variables at
+`:root` through `--css` to coordinate document and diagram colors, or local
+`--pele-*` overrides for diagrams. Mermaid `theme` / `themeVariables` do not apply.
+Inspect existing diagrams after migration because Pele has its own layout.
+See the README's Pele compatibility section for supported labels and plugins.
 
 ## Updates
 
@@ -64,7 +71,19 @@ For layout debugging, run `mdtopdf html INPUT.md -o preview.html --json`.
 Math and Mermaid are already rendered in the exported HTML; plain HTML export
 does not verify image loading. Inspect the final PDF for pagination and glyphs.
 
-Failures return an error message and, for browser failures, `error_code` and
-`hint`. Use `doctor --render-check --json` after repairing the environment.
+In the unreleased Pele pipeline, diagrams use the configured `@page` geometry;
+matching first/left/right styles use the smallest available area before
+pagination. On `diagram_text_too_small`, review the PDF and consider wider paper,
+larger labels, or splitting the diagram. The default threshold is 8pt;
+`--mdtopdf-diagram-min-font-size` on `.mermaid-diagram` adjusts the warning check,
+not the font size. `--strict` preserves existing output on these warnings too.
+
+Failures return an error message and, for browser or diagram failures,
+`error_code` and `hint`. For `diagram_render_failed`, inspect `error_details`
+for the diagram index, excerpt, and available original Markdown/diagram
+locations; fix that source block. `renderer_line` / `renderer_column` are Pele's
+preprocessed positions and may differ. Use `doctor --render-check --json` after
+repairing an environment failure. See the README's Pele section for palette
+variables, diagnostic fields, and compatibility limits.
 Exit codes: 0 success, 1 runtime/strict failure, 2 invalid arguments.
 Images, fonts, and CSS may access local/remote resources: isolate untrusted input.

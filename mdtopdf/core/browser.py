@@ -7,11 +7,14 @@ from dataclasses import dataclass
 from html import escape
 from importlib import resources
 import os
+import math
 import platform
 import secrets
 from pathlib import Path
 import tempfile
 from urllib.parse import urlparse
+
+from mdtopdf.core.diagram_diagnostics import DiagramRenderError, raise_diagram_error
 
 
 BROWSER_ENV = "MDTOPDF_BROWSER_EXECUTABLE"
@@ -149,7 +152,7 @@ def render_document(html, *, base_url=None, output_path=None, timeout=90):
         return await asyncio.wait_for(_render(html, base_url=base_url, output_path=output_path), timeout)
     try:
         return _execute(run)
-    except BrowserRenderError:
+    except (BrowserRenderError, DiagramRenderError):
         raise
     except Exception as exc:
         raise _failure(exc) from exc
@@ -217,13 +220,27 @@ async def _render(html, *, base_url, output_path):
                 await page.emulate_media(media="print")
                 await page.goto(source.as_uri(), wait_until="load")
                 package = resources.files("mdtopdf")
-                if await page.locator("[data-mdtopdf-math]").count():
+                has_diagrams = await page.locator("[data-mdtopdf-mermaid]").count()
+                layouts = []
+                if has_diagrams:
+                    layout_script = package.joinpath("vendor/page-layout.js").read_text(encoding="utf-8")
+                    area = await page.evaluate(layout_script)
+                    await page.set_viewport_size({"width": math.ceil(area["width"]), "height": math.ceil(area["height"])})
+                    layouts = await page.evaluate(layout_script, {"action": "prepare"})
+                if has_diagrams or await page.locator("[data-mdtopdf-math]").count():
                     for name in ("katex.min.js", "contrib/mhchem.min.js"):
                         await _load_script(page, package.joinpath("vendor/katex/dist", name), nonce)
-                if await page.locator("[data-mdtopdf-mermaid]").count():
-                    await _load_script(page, package.joinpath("vendor/mermaid/mermaid.min.js"), nonce)
+                if has_diagrams:
+                    from mdtopdf.core.mermaid import MERMAID_ASSET
+                    await _load_script(page, package.joinpath(MERMAID_ASSET), nonce)
                 diagnostics = await page.evaluate(package.joinpath("vendor/browser-render.js").read_text(encoding="utf-8"))
                 warnings.extend(diagnostics)
+                if has_diagrams:
+                    diagrams = await page.evaluate(package.joinpath("vendor/diagram-render.js").read_text(encoding="utf-8"), layouts)
+                    if diagrams["error"]:
+                        raise_diagram_error(diagrams["error"])
+                    warnings.extend(diagrams["warnings"])
+                    warnings.extend(await page.evaluate(layout_script, {"action": "check", "layouts": layouts}))
                 await page.evaluate("async () => { await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => null))); }")
                 missing = await page.locator("img").evaluate_all("images => images.filter(i => !i.naturalWidth).map(i => i.currentSrc || i.src)")
                 for url in missing:

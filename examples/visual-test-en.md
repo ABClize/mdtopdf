@@ -220,7 +220,7 @@ The image below is a local SVG used to check relative paths, image centering, ma
 
 ## 10. Mermaid
 
-Bundled Mermaid renders these diagrams as SVG in Chromium; no separate Mermaid CLI is required.
+Bundled Pele renders these Mermaid diagrams as SVG in Chromium; no separate Mermaid CLI is required.
 
 ```mermaid
 flowchart LR

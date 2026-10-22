@@ -55,3 +55,29 @@ def test_mixed_cjk_digits_are_visible_in_pdfium(tmp_path):
             _assert_visible_digits(page, image)
         finally:
             page.close()
+
+
+def test_pele_diagram_cjk_digits_are_visible_in_pdfium(tmp_path):
+    output = tmp_path / "pele-mixed-digits.pdf"
+    result = markdown_to_pdf(
+        "# 图表字体验证\n\n"
+        '```mermaid\nflowchart TB\n'
+        ' A["数字 0123456789"] --> B["日期 2026-06-22"]\n'
+        ' B --> C["版本 v0.2.2"] --> D["编号 IT-001"]\n```\n',
+        output,
+    )
+    assert result["ok"]
+    assert not result["warnings"]
+    with pdfium.PdfDocument(output) as pdf:
+        assert len(pdf) == 1, "A small diagram should fit on one A4 page"
+        page = pdf[0]
+        try:
+            bitmap = page.render(scale=2)
+            try:
+                image = bitmap.to_pil().copy()
+            finally:
+                bitmap.close()
+            image.save(tmp_path / "pele-mixed-digits.png")
+            _assert_visible_digits(page, image)
+        finally:
+            page.close()

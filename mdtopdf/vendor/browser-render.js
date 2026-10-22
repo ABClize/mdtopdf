@@ -14,16 +14,5 @@ async () => {
     element.removeAttribute('data-mdtopdf-math');
     element.removeAttribute('data-display');
   }
-  const diagrams = document.querySelectorAll('[data-mdtopdf-mermaid]');
-  if (diagrams.length) {
-    mermaid.initialize({startOnLoad: false, securityLevel: 'strict', flowchart: {htmlLabels: false}});
-    let index = 0;
-    for (const element of diagrams) {
-      const {svg} = await mermaid.render(`mdtopdfDiagram${index++}`, decode(element.dataset.mdtopdfMermaid));
-      element.innerHTML = svg;
-      element.querySelector('svg').classList.add('mermaid-rendered');
-      element.removeAttribute('data-mdtopdf-mermaid');
-    }
-  }
   return warnings;
 }

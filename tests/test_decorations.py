@@ -113,3 +113,52 @@ def test_pdf_decorations_keep_three_dots_at_multiple_scales(tmp_path):
                     bitmap.close()
         finally:
             page.close()
+
+
+@pytest.mark.parametrize(('lead_height', 'line_count', 'first_code_page'), [
+    (200, 60, 1),
+    (80, 10, 0),
+], ids=['keep-decoration-with-code', 'use-remaining-page-space'])
+def test_code_decoration_stays_with_first_line_while_long_code_paginates(
+    tmp_path, lead_height, line_count, first_code_page,
+):
+    lines = [f'LINE{index:03d}' for index in range(line_count)]
+    source = 'INTRO\n\n```text\n' + '\n'.join(lines) + '\n```\n'
+    target = tmp_path / 'code-page-break.pdf'
+    # Test both a nearly full page and enough room to begin a block that could
+    # fit on a fresh page. Avoiding breaks in the whole pre wastes the latter.
+    # Fix line geometry so platform monospace metrics cannot make all ten lines
+    # fit in the remaining space and invalidate the pagination fixture.
+    result = markdown_to_pdf(
+        source, target, strict=True,
+        custom_css='@page { size: 400px 300px; margin: 20px; } '
+                   'pre, pre code { font-size: 12px; line-height: 20px; } '
+                   f'p {{ height: {lead_height}px; margin: 0; }}',
+        include_page_header=False, include_page_footer=False,
+    )
+    assert result['ok'] and not result['warnings']
+    page_texts = []
+    decoration_pages = []
+    with pdfium.PdfDocument(target) as document:
+        for index in range(len(document)):
+            page = document[index]
+            text_page = page.get_textpage()
+            bitmap = page.render(scale=2)
+            try:
+                page_texts.append(text_page.get_text_range())
+                image = bitmap.to_pil().copy().convert('RGB')
+                image.save(tmp_path / f'code-page-break-{index + 1}.png')
+                colors = {color: count for count, color in image.getcolors(image.width * image.height)}
+                if all(colors.get(color, 0) >= 3 for color in DOT_COLORS):
+                    decoration_pages.append(index)
+            finally:
+                bitmap.close()
+                text_page.close()
+                page.close()
+    first_line_pages = [index for index, text in enumerate(page_texts) if lines[0] in text]
+    assert first_line_pages == [first_code_page]
+    assert decoration_pages == first_line_pages, 'Code decoration must accompany the first code line'
+    assert sum(any(line in text for line in lines) for text in page_texts) > 1
+    complete_text = '\n'.join(page_texts)
+    for line in lines:
+        assert complete_text.count(line) == 1, f'Missing or duplicated code line: {line}'

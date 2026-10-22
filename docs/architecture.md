@@ -19,10 +19,33 @@ Pandoc is not used or required.
 
 `core/browser.py` owns one isolated headless Chromium session via Python
 Playwright. The Markdown parser emits encoded math/Mermaid placeholders;
-`vendor/browser-render.js` renders them with bundled KaTeX/mhchem and Mermaid.
+`vendor/browser-render.js` renders document formulas with bundled KaTeX/mhchem,
+and `vendor/diagram-render.js` renders Mermaid syntax with bundled Pele.
 PDF conversion defers placeholder resolution until this session, waits for
 fonts/images, then prints with CSS page size, margins, backgrounds, tags, and
 outline. No separate Mermaid process or second PDF engine is retained.
+
+The Pele migration and the following layout/diagnostic changes are unreleased;
+the published 0.3.0 distribution still uses Mermaid.js.
+`vendor/page-layout.js` reads browser-accessible `@page` rules to measure paper
+size and margins before diagram layout. Named pages and matching first/left/right
+styles use the smallest available width and height before pagination is known.
+Diagram layout receives the container width at that page size, and final SVG
+dimensions are capped to the available area without changing source direction.
+This covers common print CSS rather than every possible paged-media cascade.
+
+After fitting, the same module estimates printed text sizes and emits
+`diagram_text_too_small` below the default 8pt threshold. Custom CSS can adjust
+`--mdtopdf-diagram-min-font-size` on `.mermaid-diagram`; this controls diagnostics,
+not actual font size. The warning follows the existing strict-output contract.
+The default theme shares its `--mdtopdf-*` palette between document styles and
+Pele's `--pele-*` variables. Diagram-specific overrides remain available; resolved
+Pele values are embedded into exported SVGs so standalone diagrams keep them.
+
+Tables use Chromium's automatic column layout with wrapping and a bounded
+intrinsic cell width, so long descriptions receive space without crushing short
+labels. Custom CSS can restore equal-width columns with `table-layout: fixed`.
+Math arrays retain their own sizing rules.
 
 The synchronous API works inside an existing asyncio loop by running its
 private event loop in a worker thread. Each conversion closes its browser in
@@ -40,6 +63,13 @@ output. Explicit same-path conversion with overwrite remains supported.
 `core/diagnostics.py` isolates warnings per conversion. Invalid KaTeX falls
 back to visible source with a warning; a Mermaid render failure is an error,
 not a silent code-block fallback.
+`core/diagram_diagnostics.py` preserves these failures as `DiagramRenderError`,
+separate from browser/environment errors. JSON retains the existing error fields
+and adds `error_details` with Pele's code, diagram index, source excerpt, and
+available original-source locations. Renderer line/column values are separate:
+Pele's preprocessing can shift them, so original locations are only reported when
+they can be established. Synthetic EOF errors are marked `at_end` and anchored
+to the end of the last diagram content line.
 
 `doctor --json` checks Python imports, browser executable, bundled render
 assets, and fonts. It does not launch Chromium. `--render-check` exercises
@@ -55,7 +85,10 @@ Linux open fonts, and the existing Windows font stack. See README platform
 notes for setup.
 
 Code blocks are protected using CommonMark source maps before Obsidian and
-safe-HTML preprocessing. Their contents are restored before final parsing.
+safe-HTML preprocessing. Their contents and source-line mappings are restored
+before final parsing. Placeholder identities keep repeated blocks, nested
+containers, and removed comments from being confused with each other. Temporary
+source metadata is removed after successful diagram rendering.
 
 ## Security Boundary
 
@@ -96,7 +129,11 @@ The parser is `markdown-it-py` with selected plugins:
   rendered offline to static KaTeX HTML in Chromium.
   The package vendors KaTeX JavaScript, CSS, and fonts, so users do not need
   Node.js, remote JavaScript, or CDN assets for math rendering.
-- Mermaid fenced code blocks rendered to SVG using bundled Mermaid in Chromium
+- Mermaid (`mermaid` / `mmd`) fenced code blocks rendered to SVG using bundled
+  Pele in Chromium. Pele receives the document's resolved fonts and theme
+  variables; diagrams retain their source direction and unique SVG IDs.
+  Diagram formulas use the bundled KaTeX MathML resolver. HTML previews and
+  PDFs share this path; `tools.mermaid` remains the diagnostic key.
 
 Raw HTML input is disabled by default except for the safe authoring subset. This
 keeps untrusted Markdown from being passed straight through to the PDF renderer
@@ -109,7 +146,7 @@ provide filesystem and network isolation when rendering untrusted documents.
 ## Command Surface
 
 - `mdtopdf doctor --json`
-  - Checks Python imports, Chromium discovery, bundled Mermaid/KaTeX
+  - Checks Python imports, Chromium discovery, bundled Pele/KaTeX
     assets, recommended fallback fonts, and returns recommendations for the
     caller.
 - `mdtopdf html INPUT.md -o OUTPUT.html [--json] [--unsafe-html]`
