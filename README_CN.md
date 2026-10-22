@@ -42,7 +42,7 @@ Agent 很擅长写 Markdown，但是它用各种方式导出的pdf样式无法�
 在所用的 Python 环境中，从 PyPI 安装：
 
 ```powershell
-python -m pip install "agent-markdown-pdf>=0.4.0"
+python -m pip install "agent-markdown-pdf>=0.4.1"
 ```
 
 PyPI 发行包叫 `agent-markdown-pdf`，安装后提供的命令仍然是 `mdtopdf`。
@@ -161,7 +161,7 @@ mdtopdf doctor --render-check --json
 ## 输出效果
 
 下面 6 张图来自 `examples/visual-test-cn.md`，能看到标题、Callout、表格、代码、
-公式、图片、Mermaid 和分页的实际效果。截图展示 0.4.0 的渲染效果，图表由 Pele
+公式、图片、Mermaid 和分页的实际效果。截图展示 0.4.1 恢复后的浅蓝色主题，图表由 Pele
 渲染，PDF 由 Chromium 输出。
 
 | 第 1 页 | 第 2 页 |
@@ -194,18 +194,18 @@ flowchart LR
 ````
 
 Pele 生成的 SVG 用于 HTML 预览和 PDF；图表标签中的 `$$...$$` 公式由内置
-KaTeX 排版。默认 SVG 主题沿用文档的柔和淡紫配色和 Latin-first 字体栈，
-使用淡紫节点、深色文字和灰紫连线。
+KaTeX 排版。默认 SVG 主题沿用文档的浅蓝配色和 Latin-first 字体栈，
+使用浅蓝节点、深色文字和蓝灰连线。0.4.1 将 0.4.0 的淡紫色默认配色恢复为浅蓝色。
 
 需要统一调整正文与图表配色时，通过 `--css` 传入 CSS 文件：
 
 ```css
 :root {
-  --mdtopdf-accent: #7352a6;
-  --mdtopdf-surface: #f3effa;
+  --mdtopdf-accent: #0f6ea7;
+  --mdtopdf-surface: #f5f9fd;
 }
 .mermaid-diagram {
-  --pele-border: #b5a2cf;
+  --pele-border: #9bb2c8;
 }
 ```
 

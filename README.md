@@ -44,7 +44,7 @@ command-line interface where the style can be defined up front.
 Install from PyPI in your Python environment:
 
 ```shell
-python -m pip install "agent-markdown-pdf>=0.4.0"
+python -m pip install "agent-markdown-pdf>=0.4.1"
 ```
 
 The PyPI distribution is `agent-markdown-pdf`; it installs the `mdtopdf` command.
@@ -175,7 +175,7 @@ bundled renderer makes the basic doctor check fail.
 The gallery below is rendered from the final PDF produced by
 `examples/visual-test-en.md`. It shows the actual pages an agent can hand back
 to a user: headings, callouts, tables, code, math, images, Mermaid, and
-pagination. The images show the 0.4.0 renderer, with Pele diagrams
+pagination. The images show the restored light-blue theme in 0.4.1, with Pele diagrams
 and Chromium PDF rendering.
 
 | Page 1 | Page 2 |
@@ -210,18 +210,19 @@ flowchart LR
 
 Pele produces SVG for HTML preview and PDF. Diagram label formulas written as
 `$$...$$` use the bundled KaTeX renderer. The default SVG theme matches the
-document's soft lavender palette and Latin-first font stack, with pale purple
-nodes, dark text, and gray-purple connectors.
+document's light-blue palette and Latin-first font stack, with pale blue
+nodes, dark text, and blue-gray connectors. Version 0.4.1 restores this palette
+after the lavender default in 0.4.0.
 
 To customize the document and diagram palette, pass a CSS file with `--css`:
 
 ```css
 :root {
-  --mdtopdf-accent: #7352a6;
-  --mdtopdf-surface: #f3effa;
+  --mdtopdf-accent: #0f6ea7;
+  --mdtopdf-surface: #f5f9fd;
 }
 .mermaid-diagram {
-  --pele-border: #b5a2cf;
+  --pele-border: #9bb2c8;
 }
 ```
 
