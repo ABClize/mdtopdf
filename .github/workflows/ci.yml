@@ -1,15 +1,38 @@
 name: CI
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   checks:
-    uses: ./.github/workflows/tests.yml
+    name: Lightweight checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package and check tools
+        run: python -m pip install -e . pytest build twine
+      - name: Check Python syntax
+        run: python -m compileall -q mdtopdf scripts tests
+      - name: Run browser-free unit tests
+        run: >-
+          python -m pytest -q
+          tests/test_browser_discovery.py
+          tests/test_dependency_diagnostics.py
+          tests/test_macos_fonts.py
+      - name: Build and check distributions
+        run: |
+          python -m build
+          python -m twine check dist/*
