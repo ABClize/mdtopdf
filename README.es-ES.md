@@ -40,14 +40,10 @@ Los agentes son buenos escribiendo Markdown. El problema es la transferencia: lo
 
 ## Inicio rápido
 
-**Estado de desarrollo:** el renderizador Pele descrito abajo aún no se ha publicado.
-La versión actual de PyPI, 0.3.0, sigue usando Mermaid.js. Para probar Pele antes
-del lanzamiento, ejecute `python -m pip install -e ".[dev]"` desde este repositorio.
-
 Instale desde PyPI en su entorno de Python:
 
 ```shell
-python -m pip install "agent-markdown-pdf>=0.3.0"
+python -m pip install "agent-markdown-pdf>=0.4.0"
 ```
 
 La distribución en PyPI es `agent-markdown-pdf`; instala el comando `mdtopdf`. No utilice `mdtopdf` como nombre del paquete en PyPI; el nombre de la distribución es intencionalmente distinto al del comando.
@@ -154,7 +150,7 @@ mdtopdf convert report.md -o report.pdf --overwrite --json
 
 ## Salida visual
 
-La galería a continuación se renderiza desde el PDF final producido por `examples/visual-test-en.md`. Muestra las páginas reales que un agente puede entregar a un usuario: encabezados, callouts, tablas, código, matemáticas, imágenes, Mermaid y paginación. Las imágenes se generaron con la versión de desarrollo actual, con diagramas Pele y PDF renderizado por Chromium.
+La galería a continuación se renderiza desde el PDF final producido por `examples/visual-test-en.md`. Muestra las páginas reales que un agente puede entregar a un usuario: encabezados, callouts, tablas, código, matemáticas, imágenes, Mermaid y paginación. Las imágenes muestran el renderizador de la versión 0.4.0, con diagramas Pele y PDF renderizado por Chromium.
 
 | Página 1 | Página 2 |
 | --- | --- |
@@ -174,7 +170,7 @@ Una sesión de Chromium renderiza fórmulas con KaTeX y bloques Mermaid con Pele
 incluidos, espera las fuentes e imágenes y genera el PDF. No necesita WeasyPrint, MSYS2, Mermaid CLI ni una
 instalación separada de Node.js. No se descarga ningún navegador durante la conversión.
 
-### Diagramas Mermaid con Pele (sin publicar)
+### Diagramas Mermaid con Pele
 
 Siga usando bloques de código `mermaid` o `mmd`:
 
@@ -365,7 +361,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 `mdtopdf` admite:
 
 - CommonMark
-- Tablas con anchos de columna adaptados al contenido y ajuste de palabras largas y URL (sin publicar)
+- Tablas con anchos de columna adaptados al contenido y ajuste de palabras largas y URL
 - Tachado
 - Listas de tareas
 - Notas al pie
@@ -378,7 +374,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 - Callouts estilo Obsidian como `> [!note] Título`
 - Etiquetas HTML en línea seguras como `<br>`, `<kbd>`, `<mark>`, `<sup>` y `<sub>`
 - Matemáticas TeX a través de `$inline$`, `$$block$$` y entornos `amsmath` comunes
-- Bloques Mermaid con Pele incluido, renderizados en Chromium (sin publicar)
+- Bloques Mermaid con Pele incluido, renderizados en Chromium
 
 El HTML crudo está deshabilitado por defecto, excepto por el subconjunto seguro anterior. Para Markdown local de confianza, pase `--unsafe-html`.
 

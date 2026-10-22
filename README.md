@@ -41,14 +41,10 @@ command-line interface where the style can be defined up front.
 
 ## Quick start
 
-**Development status:** the Pele diagram renderer described below is an unreleased
-source change. The current PyPI release, 0.3.0, still uses Mermaid.js. Install this
-checkout with `python -m pip install -e ".[dev]"` to try Pele before release.
-
 Install from PyPI in your Python environment:
 
 ```shell
-python -m pip install "agent-markdown-pdf>=0.3.0"
+python -m pip install "agent-markdown-pdf>=0.4.0"
 ```
 
 The PyPI distribution is `agent-markdown-pdf`; it installs the `mdtopdf` command.
@@ -179,7 +175,7 @@ bundled renderer makes the basic doctor check fail.
 The gallery below is rendered from the final PDF produced by
 `examples/visual-test-en.md`. It shows the actual pages an agent can hand back
 to a user: headings, callouts, tables, code, math, images, Mermaid, and
-pagination. The images use the current development version, with Pele diagrams
+pagination. The images show the 0.4.0 renderer, with Pele diagrams
 and Chromium PDF rendering.
 
 | Page 1 | Page 2 |
@@ -201,7 +197,7 @@ with bundled Pele, waits for fonts and images, and prints the PDF. No separate
 Mermaid CLI, Node.js installation, WeasyPrint, or MSYS2 setup is needed. Browser
 installation is an explicit setup step; conversion never downloads a browser.
 
-### Mermaid diagrams with Pele (unreleased)
+### Mermaid diagrams with Pele
 
 Keep using `mermaid` or `mmd` fenced code blocks:
 
@@ -406,7 +402,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 `mdtopdf` supports:
 
 - CommonMark
-- Tables with content-based column widths and wrapping for long words and URLs (unreleased)
+- Tables with content-based column widths and wrapping for long words and URLs
 - Strikethrough
 - Task lists
 - Footnotes
@@ -419,7 +415,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 - Obsidian-style callouts such as `> [!note] Title`
 - Safe inline HTML tags such as `<br>`, `<kbd>`, `<mark>`, `<sup>`, and `<sub>`
 - TeX math through `$inline$`, `$$block$$`, and common `amsmath` environments
-- Mermaid code blocks through bundled Pele in Chromium (unreleased)
+- Mermaid code blocks through bundled Pele in Chromium
 
 Raw HTML is disabled by default except for the safe subset above. For trusted
 local Markdown, pass `--unsafe-html`.
