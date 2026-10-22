@@ -40,6 +40,10 @@ Los agentes son buenos escribiendo Markdown. El problema es la transferencia: lo
 
 ## Inicio rápido
 
+**Estado de desarrollo:** el renderizador Pele descrito abajo aún no se ha publicado.
+La versión actual de PyPI, 0.3.0, sigue usando Mermaid.js. Para probar Pele antes
+del lanzamiento, ejecute `python -m pip install -e ".[dev]"` desde este repositorio.
+
 Instale desde PyPI en su entorno de Python:
 
 ```shell
@@ -150,7 +154,7 @@ mdtopdf convert report.md -o report.pdf --overwrite --json
 
 ## Salida visual
 
-La galería a continuación se renderiza desde el PDF final producido por `examples/visual-test-en.md`. Muestra las páginas reales que un agente puede entregar a un usuario: encabezados, callouts, tablas, código, matemáticas, imágenes, Mermaid y paginación.
+La galería a continuación se renderiza desde el PDF final producido por `examples/visual-test-en.md`. Muestra las páginas reales que un agente puede entregar a un usuario: encabezados, callouts, tablas, código, matemáticas, imágenes, Mermaid y paginación. Estas imágenes son anteriores a la migración a Pele.
 
 | Página 1 | Página 2 |
 | --- | --- |
@@ -166,9 +170,83 @@ La galería a continuación se renderiza desde el PDF final producido por `examp
 Markdown -> markdown-it-py HTML -> theme/custom CSS -> Chromium PDF
 ```
 
-Una sesión de Chromium renderiza KaTeX y Mermaid incluidos, espera las fuentes
-e imágenes y genera el PDF. No necesita WeasyPrint, MSYS2, Mermaid CLI ni una
+Una sesión de Chromium renderiza fórmulas con KaTeX y bloques Mermaid con Pele
+incluidos, espera las fuentes e imágenes y genera el PDF. No necesita WeasyPrint, MSYS2, Mermaid CLI ni una
 instalación separada de Node.js. No se descarga ningún navegador durante la conversión.
+
+### Diagramas Mermaid con Pele (sin publicar)
+
+Siga usando bloques de código `mermaid` o `mmd`:
+
+````markdown
+```mermaid
+flowchart LR
+    A[Borrador] --> B[Revisión] --> C[PDF]
+```
+````
+
+Pele genera SVG para la vista previa HTML y el PDF. Las fórmulas `$$...$$` en
+etiquetas usan KaTeX incluido. El tema SVG comparte la paleta azul grisácea del
+documento y prioriza las fuentes latinas antes de CJK.
+
+Personalice la paleta del documento y de los diagramas con un archivo `--css`:
+
+```css
+:root {
+  --mdtopdf-accent: #0f6ea7;
+  --mdtopdf-surface: #f2f6fa;
+}
+.mermaid-diagram {
+  --pele-border: #7f9ab8;
+}
+```
+
+Las variables compartidas son `--mdtopdf-background`, `--mdtopdf-text`,
+`--mdtopdf-heading`, `--mdtopdf-accent`, `--mdtopdf-muted`, `--mdtopdf-surface`,
+`--mdtopdf-surface-alt`, `--mdtopdf-border` y `--mdtopdf-critical`.
+Los títulos de nivel 2–6 tienen además `--mdtopdf-heading-2` a
+`--mdtopdf-heading-6`. Las variables locales `--pele-*` permiten ajustar solo
+los diagramas.
+
+La disposición considera el tamaño y los márgenes de `@page`, incluidas las
+páginas con nombre. Antes de paginar, utiliza de forma conservadora el menor
+ancho y alto disponibles entre las reglas coincidentes de primera página,
+página izquierda y página derecha. Se conserva la dirección del código fuente.
+Esto cubre CSS de impresión habitual; revise el PDF final con reglas complejas.
+
+Si el texto del diagrama queda por debajo de aproximadamente **8pt**, se devuelve
+`diagram_text_too_small`, con el índice del diagrama y el tamaño impreso estimado.
+Utilice una página más ancha, etiquetas más grandes o diagramas más pequeños.
+Puede ajustar el umbral con
+`.mermaid-diagram { --mdtopdf-diagram-min-font-size: 9pt; }` en su CSS; esto cambia
+la comprobación, no el tamaño de la fuente. `--strict` rechaza la advertencia y
+conserva el archivo de salida existente.
+
+Los errores de diagrama devuelven `error_code: "diagram_render_failed"`, una
+indicación `hint` y `error_details` con el código de Pele, el índice del diagrama
+(desde 1) y un fragmento del código fuente. Cuando se puede confirmar la ubicación,
+`diagram_line`, `diagram_column` y `source_line` señalan el diagrama original y
+la línea de Markdown; `source_start_line` identifica la primera línea de contenido
+del bloque. `renderer_line` / `renderer_column` se conservan por separado porque
+el preprocesamiento de Pele puede desplazar las posiciones. Las ubicaciones
+desconocidas se omiten.
+
+Pele utiliza su propia disposición y puede cambiar la geometría. Los ajustes
+Mermaid `theme` y `themeVariables` no definen sus colores: use variables CSS.
+No admite etiquetas HTML arbitrarias ni plugins externos de Mermaid. Revise los
+diagramas existentes en HTML y PDF. Consulte la
+[compatibilidad](https://pele.run/compatibility) y los
+[temas](https://pele.run/theming) de Pele.
+
+Pele **1.8.0**, la versión incluida, requiere nombres ASCII para los nodos Sankey.
+Los nombres chinos no se pueden analizar, incluso entre comillas.
+
+Use `examples/pele-compatibility.md` y su CSS para revisar los diagramas:
+
+```shell
+mdtopdf html examples/pele-compatibility.md --css examples/pele-compatibility.css -o pele-compatibility.html --overwrite
+mdtopdf convert examples/pele-compatibility.md --css examples/pele-compatibility.css -o pele-compatibility.pdf --overwrite
+```
 
 ### Actualización desde 0.2.x
 
@@ -183,7 +261,7 @@ procesar JSON. Consulte [CHANGELOG.md](CHANGELOG.md).
 | Característica | Notas |
 | --- | --- |
 | Salida JSON | `--json` está disponible para conversión, vista previa HTML, doctor y listado de temas. |
-| Verificaciones del entorno | `doctor --json` verifica importaciones de Python, el navegador, los recursos KaTeX/Mermaid incluidos y las fuentes recomendadas. |
+| Verificaciones del entorno | `doctor --json` verifica importaciones de Python, el navegador, los recursos KaTeX/Pele incluidos y las fuentes recomendadas. |
 | Renderizado local | Markdown, CSS, matemáticas, generación de SVG de Mermaid y exportación de PDF se mantienen en la máquina. |
 | Vista previa HTML | Genere HTML independiente antes de la exportación a PDF para una inspección visual rápida. |
 | Compatibilidad con Obsidian | Wikilinks, alias, ocultamiento de frontmatter, comentarios, resaltados y callouts con tipo. |
@@ -299,7 +377,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 - Callouts estilo Obsidian como `> [!note] Título`
 - Etiquetas HTML en línea seguras como `<br>`, `<kbd>`, `<mark>`, `<sup>` y `<sub>`
 - Matemáticas TeX a través de `$inline$`, `$$block$$` y entornos `amsmath` comunes
-- Diagramas Mermaid con los recursos incluidos, renderizados en Chromium
+- Bloques Mermaid con Pele incluido, renderizados en Chromium (sin publicar)
 
 El HTML crudo está deshabilitado por defecto, excepto por el subconjunto seguro anterior. Para Markdown local de confianza, pase `--unsafe-html`.
 
@@ -397,6 +475,9 @@ python -m twine check dist/*
 
 ## Licencia
 
-MIT. KaTeX y Mermaid incluyen sus licencias MIT en `mdtopdf/vendor/katex/LICENSE` y `mdtopdf/vendor/mermaid/LICENSE`.
+MIT. KaTeX y Pele incluyen sus licencias MIT en `mdtopdf/vendor/katex/LICENSE` y `mdtopdf/vendor/pele/LICENSE`.
+`mdtopdf/vendor/pele/LICENSE` también incluye la licencia ISC de Lucide.
+La versión, el origen y el hash del recurso Pele incluido se registran en
+`mdtopdf/vendor/pele/NOTICE.md`.
 
 `mdtopdf` no incluye fuentes corporales CJK, fuentes de emojis ni fuentes propietarias del sistema. El tema predeterminado hace referencia a fuentes del sistema local como Segoe UI, Microsoft YaHei, PingFang SC, Segoe UI Emoji, Noto Sans CJK SC, Noto Emoji, Noto Color Emoji, Cascadia Code y Consolas, pero esos archivos de fuente provienen del sistema operativo o entorno de ejecución del usuario. Las imágenes públicas de Linux deberían preferir la línea base de fuentes abiertas mencionada anteriormente.

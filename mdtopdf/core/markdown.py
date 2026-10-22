@@ -30,7 +30,6 @@ from mdtopdf.core.inline import (
     is_escaped_marker,
     map_lines_outside_fences,
     protect_code_blocks,
-    restore_code_blocks,
 )
 from mdtopdf.core.diagnostics import collect_warnings
 from mdtopdf.core.katex import load_katex_css
@@ -178,7 +177,10 @@ def render_markdown_to_html(
     resolved_title = title or infer_title(markdown_text) or "Markdown Document"
     resolved_header = page_header if page_header is not None else resolved_title
     resolved_footer = page_footer or None
-    protected_source, code_blocks = protect_code_blocks(markdown_text)
+    code_block_source_lines: dict[str, int] = {}
+    protected_source, code_blocks = protect_code_blocks(
+        markdown_text, source_lines=code_block_source_lines,
+    )
     obsidian_result = protect_obsidian_code_span_emphasis(protected_source)
     if unsafe_html:
         protected_markdown = obsidian_result.markdown
@@ -191,9 +193,11 @@ def render_markdown_to_html(
         embed_resolver=obsidian_embed_resolver,
     )
     md = _build_markdown_renderer(unsafe_html=unsafe_html)
-    protected_markdown = restore_code_blocks(protected_markdown, code_blocks)
+    protected_markdown, source_lines = _restore_mapped_code_blocks(
+        protected_markdown, code_blocks, code_block_source_lines,
+    )
     with collect_warnings() as warnings:
-        body = md.render(protected_markdown)
+        body = md.render(protected_markdown, {"mdtopdf_source_lines": source_lines})
     body = _restore_placeholders(body, safe_html_placeholders)
     body = restore_obsidian_placeholders(body, obsidian_result)
     body = _unwrap_safe_block_tags(body)
@@ -270,6 +274,35 @@ def _build_markdown_renderer(*, unsafe_html: bool = False) -> MarkdownIt:
     return md
 
 
+def _restore_mapped_code_blocks(
+    text: str, blocks: dict[str, str], original_lines: dict[str, int],
+) -> tuple[str, dict[int, int]]:
+    """Restore protected blocks and map their lines back to the original input.
+
+    Placeholder identities, rather than block contents, distinguish repeated
+    diagrams and blocks removed with surrounding comments. The final parser's
+    token maps then also cover fences nested in lists and blockquotes.
+    """
+    if not blocks:
+        return text, {}
+    pattern = re.compile("|".join(re.escape(key) for key in blocks))
+    line_map: dict[int, int] = {}
+    parts: list[str] = []
+    cursor = output_line = 0
+    for match in pattern.finditer(text):
+        prefix = text[cursor:match.start()]
+        output_line += len(re.findall(r"\r\n?|\n", prefix))
+        original = blocks[match.group()]
+        start = original_lines[match.group()]
+        for offset, _ in enumerate(original.splitlines()):
+            line_map[output_line + offset] = start + offset
+        parts.extend((prefix, original))
+        output_line += len(re.findall(r"\r\n?|\n", original))
+        cursor = match.end()
+    parts.append(text[cursor:])
+    return "".join(parts), line_map
+
+
 def _render_fence(
     tokens: list[Token],
     idx: int,
@@ -280,7 +313,9 @@ def _render_fence(
     lang = token.info.strip().split(maxsplit=1)[0] if token.info else ""
     if lang.lower() in {"mermaid", "mmd"}:
         encoded = base64.b64encode(token.content.encode("utf-8")).decode("ascii")
-        return f'<figure class="mermaid-diagram" data-mdtopdf-mermaid="{encoded}"></figure>\n'
+        original_line = env.get("mdtopdf_source_lines", {}).get(token.map[0]) if token.map else None
+        source = f' data-mdtopdf-source-line="{original_line + 2}"' if original_line is not None else ""
+        return f'<figure class="mermaid-diagram" data-mdtopdf-mermaid="{encoded}"{source}></figure>\n'
     return highlight_code(token.content, lang)
 
 

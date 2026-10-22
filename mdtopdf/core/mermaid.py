@@ -1,12 +1,14 @@
-"""Bundled Mermaid rendering, without an external CLI or Node installation."""
+"""Mermaid syntax rendered by bundled Pele, without an external CLI."""
 import base64
 from importlib import resources
 
 from mdtopdf.core.browser import render_document
 
+MERMAID_ASSET = "vendor/pele/pele.global.js"
+
 
 def find_mermaid_backend():
-    path = resources.files("mdtopdf").joinpath("vendor/mermaid/mermaid.min.js")
+    path = resources.files("mdtopdf").joinpath(MERMAID_ASSET)
     return path if path.is_file() else None
 
 
@@ -14,7 +16,7 @@ def inspect_mermaid_backend():
     found = find_mermaid_backend() is not None
     return {"ok": found, "backend": "bundled-javascript", "executable": None,
             "requires_network": False, "optional": False,
-            "error": None if found else "Bundled Mermaid asset is missing; reinstall agent-markdown-pdf."}
+            "error": None if found else "Bundled Pele asset for Mermaid diagrams is missing; reinstall agent-markdown-pdf."}
 
 
 def render_mermaid_to_html(source: str) -> str:

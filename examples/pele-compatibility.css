@@ -1,0 +1,5 @@
+/* Keep each compatibility group together for visual review. */
+@media print {
+  h2 { break-before: page; margin-top: 0; }
+  h2:first-child { break-before: auto; }
+}

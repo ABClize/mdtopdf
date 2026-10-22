@@ -64,9 +64,11 @@ include = ["mdtopdf", "mdtopdf.*"]
 [tool.setuptools.package-data]
 mdtopdf = [
   "vendor/browser-render.js",
-  "vendor/mermaid/*.js",
-  "vendor/mermaid/LICENSE",
-  "vendor/mermaid/NOTICE.md",
+  "vendor/diagram-render.js",
+  "vendor/page-layout.js",
+  "vendor/pele/*.js",
+  "vendor/pele/LICENSE",
+  "vendor/pele/NOTICE.md",
   "themes/*.css",
   "skills/*.md",
   "vendor/katex/LICENSE",

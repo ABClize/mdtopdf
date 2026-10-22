@@ -10,11 +10,17 @@ from markdown_it import MarkdownIt
 FENCE_RE = re.compile(r"^(?P<indent> {0,3})(?P<fence>`{3,}|~{3,})")
 
 
-def protect_code_blocks(markdown_text: str) -> tuple[str, dict[str, str]]:
+def protect_code_blocks(
+    markdown_text: str, *, source_lines: dict[str, int] | None = None,
+) -> tuple[str, dict[str, str]]:
     """Shield CommonMark code blocks, including blocks inside containers.
 
     Restore the source before final parsing, not after HTML rendering: code must
     still be escaped by the Markdown renderer and highlighted normally.
+
+    If supplied, ``source_lines`` records each placeholder's zero-based original
+    line. Consumers can retain source locations even when preprocessing removes
+    frontmatter or comments before restoring the blocks.
     """
     lines = markdown_text.splitlines(keepends=True)
     replacements: dict[str, str] = {}
@@ -30,6 +36,8 @@ def protect_code_blocks(markdown_text: str) -> tuple[str, dict[str, str]]:
         newline = "\r\n" if original.endswith("\r\n") else "\n" if original.endswith("\n") else ""
         marker = f"```{prefix}X{start}END\n```{newline}"
         replacements[marker] = original
+        if source_lines is not None:
+            source_lines[marker] = start
         lines[start:end] = [marker]
     return "".join(lines), replacements
 

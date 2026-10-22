@@ -29,8 +29,11 @@ def main():
     assert package.joinpath("skills/SKILL.md").is_file()
     assert package.joinpath("themes/default.css").is_file()
     assert package.joinpath("vendor/katex/dist/fonts/KaTeX_Main-Regular.woff2").is_file()
-    assert package.joinpath("vendor/mermaid/mermaid.min.js").is_file()
+    assert package.joinpath("vendor/pele/pele.global.js").is_file()
+    assert package.joinpath("vendor/pele/LICENSE").is_file()
     assert package.joinpath("vendor/browser-render.js").is_file()
+    assert package.joinpath("vendor/diagram-render.js").is_file()
+    assert package.joinpath("vendor/page-layout.js").is_file()
     with tempfile.TemporaryDirectory(prefix="mdtopdf-wheel-") as directory:
         source = Path(directory) / "report.md"
         source.write_text("# Wheel check\n\n0123456789\n\n$x^2 + 1$\n\n~~~mermaid\ngraph TD; A-->B\n~~~\n", encoding="utf-8")
@@ -39,7 +42,7 @@ def main():
         assert Path(result["output"]).read_bytes().startswith(b"%PDF-")
         preview = json.loads(run("html", str(source), "--json"))
         html = Path(preview["output"]).read_text(encoding="utf-8")
-        assert "katex-html" in html and "<svg" in html
+        assert "katex-html" in html and "pele-flowchart" in html
         assert "data-mdtopdf-mermaid=" not in html
         piped = json.loads(run("convert", "-", "-o", str(Path(directory) / "stdin.pdf"),
                                "--json", input="# UTF-8 stdin\n\n中文 0123456789\n"))

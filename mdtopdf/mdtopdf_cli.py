@@ -23,7 +23,7 @@ def _error_result(exc: Exception) -> dict[str, Any]:
     result = {"ok": False, "error": str(exc), "error_type": type(exc).__name__}
     if hasattr(exc, "warnings"):
         result["warnings"] = exc.warnings
-    for field in ("error_code", "hint"):
+    for field in ("error_code", "hint", "error_details"):
         if getattr(exc, field, None):
             result[field] = getattr(exc, field)
     return result
@@ -283,7 +283,7 @@ def html(
 
 
 @cli.command()
-@click.option("--render-check", is_flag=True, help="Render a sample PDF and test Mermaid if installed.")
+@click.option("--render-check", is_flag=True, help="Render a sample PDF and test bundled KaTeX and Pele (Mermaid diagrams).")
 @click.option("--json", "json_output", is_flag=True, help="Emit machine-readable JSON output.")
 @click.pass_context
 def doctor(ctx: click.Context, json_output: bool, render_check: bool) -> None:

@@ -41,6 +41,10 @@ command-line interface where the style can be defined up front.
 
 ## Quick start
 
+**Development status:** the Pele diagram renderer described below is an unreleased
+source change. The current PyPI release, 0.3.0, still uses Mermaid.js. Install this
+checkout with `python -m pip install -e ".[dev]"` to try Pele before release.
+
 Install from PyPI in your Python environment:
 
 ```shell
@@ -175,7 +179,7 @@ bundled renderer makes the basic doctor check fail.
 The gallery below is rendered from the final PDF produced by
 `examples/visual-test-en.md`. It shows the actual pages an agent can hand back
 to a user: headings, callouts, tables, code, math, images, Mermaid, and
-pagination.
+pagination. These gallery images predate the Pele migration.
 
 | Page 1 | Page 2 |
 | --- | --- |
@@ -191,10 +195,82 @@ pagination.
 Markdown -> markdown-it-py HTML -> theme/custom CSS -> Chromium PDF
 ```
 
-One Chromium session renders bundled KaTeX and Mermaid, waits for fonts and
-images, and prints the PDF. No separate Mermaid CLI, Node.js installation,
-WeasyPrint, or MSYS2 setup is needed. Browser installation is an explicit setup
-step; conversion never downloads a browser.
+One Chromium session renders formulas with bundled KaTeX and Mermaid code blocks
+with bundled Pele, waits for fonts and images, and prints the PDF. No separate
+Mermaid CLI, Node.js installation, WeasyPrint, or MSYS2 setup is needed. Browser
+installation is an explicit setup step; conversion never downloads a browser.
+
+### Mermaid diagrams with Pele (unreleased)
+
+Keep using `mermaid` or `mmd` fenced code blocks:
+
+````markdown
+```mermaid
+flowchart LR
+    A[Draft] --> B[Review] --> C[PDF]
+```
+````
+
+Pele produces SVG for HTML preview and PDF. Diagram label formulas written as
+`$$...$$` use the bundled KaTeX renderer. The default SVG theme matches the
+document's blue-gray palette and Latin-first font stack.
+
+To customize the document and diagram palette, pass a CSS file with `--css`:
+
+```css
+:root {
+  --mdtopdf-accent: #0f6ea7;
+  --mdtopdf-surface: #f2f6fa;
+}
+.mermaid-diagram {
+  --pele-border: #7f9ab8;
+}
+```
+
+Shared palette variables are `--mdtopdf-background`, `--mdtopdf-text`,
+`--mdtopdf-heading`, `--mdtopdf-accent`, `--mdtopdf-muted`, `--mdtopdf-surface`,
+`--mdtopdf-surface-alt`, `--mdtopdf-border`, and `--mdtopdf-critical`.
+Heading levels 2–6 also have `--mdtopdf-heading-2` through `--mdtopdf-heading-6`.
+Local `--pele-*` overrides still customize diagrams independently.
+
+Diagram layout uses the configured `@page` size and margins, including named
+pages. Before pagination, it conservatively uses the smallest available width
+and height across matching first/left/right page styles. The source diagram
+direction is preserved. This supports common print CSS; inspect the final PDF
+when using more complex page rules.
+
+If fitting a diagram makes its text smaller than approximately **8pt**, the
+result includes a `diagram_text_too_small` warning with the diagram index and
+estimated printed font size. Prefer a wider page, larger labels, or smaller
+diagrams. To adjust the warning threshold, use
+`.mermaid-diagram { --mdtopdf-diagram-min-font-size: 9pt; }` in your CSS.
+This changes the check, not the font size. `--strict` rejects the warning and
+preserves an existing output.
+
+Diagram failures return `error_code: "diagram_render_failed"`, an actionable
+`hint`, and `error_details` with Pele's code, the 1-based diagram index, and a
+source excerpt. When the location can be established, `diagram_line`,
+`diagram_column`, and `source_line` refer to the original diagram and Markdown;
+`source_start_line` identifies the code block's first content line.
+Pele's own `renderer_line` / `renderer_column` are kept separately because its
+preprocessing can shift locations. Unknown locations are omitted, not guessed.
+
+Pele has its own layout, so diagram geometry can change. Mermaid `theme` and
+`themeVariables` settings do not set its colors; use the CSS variables above.
+Arbitrary HTML labels and external Mermaid plugins are unsupported. Review
+existing diagrams in HTML and the final PDF. See Pele's
+[compatibility guide](https://pele.run/compatibility) and
+[theme variables](https://pele.run/theming).
+
+The bundled Pele **1.8.0** requires ASCII Sankey node names. Chinese node names,
+including quoted names, fail to parse in this version.
+
+Use `examples/pele-compatibility.md` with its companion CSS to review diagram output:
+
+```shell
+mdtopdf html examples/pele-compatibility.md --css examples/pele-compatibility.css -o pele-compatibility.html --overwrite
+mdtopdf convert examples/pele-compatibility.md --css examples/pele-compatibility.css -o pele-compatibility.pdf --overwrite
+```
 
 ### Upgrading from 0.2.x
 
@@ -210,7 +286,7 @@ the old backend. See the [release notes](https://github.com/ABClize/mdtopdf/blob
 | Feature | Notes |
 | --- | --- |
 | JSON output | `--json` is available for conversion, HTML preview, doctor, and theme listing. |
-| Environment checks | `doctor --json` checks Python imports, the browser executable, bundled KaTeX/Mermaid assets, and recommended fonts. |
+| Environment checks | `doctor --json` checks Python imports, the browser executable, bundled KaTeX/Pele assets, and recommended fonts. |
 | Local rendering | Markdown, CSS, math, Mermaid SVG generation, and PDF export stay on the machine. |
 | HTML preview | Generate standalone HTML before PDF export for fast visual inspection. |
 | Obsidian compatibility | Wikilinks, aliases, frontmatter hiding, comments, highlights, and typed callouts. |
@@ -341,7 +417,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 - Obsidian-style callouts such as `> [!note] Title`
 - Safe inline HTML tags such as `<br>`, `<kbd>`, `<mark>`, `<sup>`, and `<sub>`
 - TeX math through `$inline$`, `$$block$$`, and common `amsmath` environments
-- Mermaid diagrams through bundled Mermaid in Chromium
+- Mermaid code blocks through bundled Pele in Chromium (unreleased)
 
 Raw HTML is disabled by default except for the safe subset above. For trusted
 local Markdown, pass `--unsafe-html`.
@@ -441,8 +517,11 @@ python -m twine check dist/*
 
 ## License
 
-MIT. Bundled KaTeX and Mermaid assets include their MIT licenses at
-`mdtopdf/vendor/katex/LICENSE` and `mdtopdf/vendor/mermaid/LICENSE`.
+MIT. Bundled KaTeX and Pele assets include their MIT licenses at
+`mdtopdf/vendor/katex/LICENSE` and `mdtopdf/vendor/pele/LICENSE`.
+`mdtopdf/vendor/pele/LICENSE` also includes the Lucide ISC license.
+Pele's bundled version, source, and asset hash are recorded in
+`mdtopdf/vendor/pele/NOTICE.md`.
 
 `mdtopdf` does not bundle CJK body fonts, emoji fonts, or proprietary system
 fonts. The default theme references local system fonts such as Segoe UI,
