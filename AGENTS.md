@@ -26,11 +26,18 @@ public API stable unless the user explicitly asks for a breaking change.
 
 ## CI Contract
 
-Daily CI lives in `.github/workflows/ci.yml`. It and the release workflow call
+Lightweight CI lives in `.github/workflows/ci.yml`.
+
+- Runs on pull requests and manual dispatch, not pushes to `main`.
+- Uses one Linux/Python 3.12 job for syntax checks, browser-free unit tests,
+  distribution builds and Twine checks. No browser or native-font setup.
+- New commits cancel older CI runs for the same PR.
+- Full rendering tests run only for releases, to conserve Actions minutes.
+
+Release CI lives in `.github/workflows/release.yml`. On `v*` tag push it calls
 `.github/workflows/tests.yml`; platform font setup is shared through
 `.github/actions/setup-native/action.yml`.
 
-- Runs on pushes to `main`, pull requests, and manual dispatch.
 - Tests Python 3.10, 3.11, 3.12, 3.13, and 3.14.
 - Also tests Python 3.12 on Windows and macOS.
 - Installs the Linux font baseline and prepares Chromium after installing the package.
@@ -46,13 +53,10 @@ Daily CI lives in `.github/workflows/ci.yml`. It and the release workflow call
 - Installs the built wheel into a clean environment and runs
   `scripts/wheel_smoke.py` outside the checkout.
 
-Release CI lives in `.github/workflows/release.yml`.
-
-- Runs on `v*` tag push.
-- Repeats the Python test matrix.
 - Verifies the tag matches `pyproject.toml`.
 - Builds source and wheel distributions.
-- Publishes to PyPI through `pypa/gh-action-pypi-publish@release/v1`.
+- Publishes to PyPI through `pypa/gh-action-pypi-publish@release/v1` only after
+  the full test matrix, installed-wheel checks and build succeed.
 
 ## Local Verification
 

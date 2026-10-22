@@ -10,9 +10,10 @@
    While the version is unpublished, clearly label development installation.
 4. Refresh the English/Chinese PDF gallery from the visual examples when the
    renderer changes. Inspect every page, not just extracted text.
-5. Verify the final candidate's CI: Linux Python 3.10-3.14, Windows, macOS,
-   installed-wheel conversion, math, Mermaid and UTF-8 stdin. No failing or
-   pending required checks.
+5. Verify the release PR's lightweight CI: Python syntax, browser-free unit
+   tests, distribution builds and Twine checks. No failing or pending required
+   checks. Full cross-platform rendering tests run after the release tag is
+   pushed and must pass before publication; merging into main starts no extra CI.
 6. Build in a clean output directory, run `twine check`, and inspect both archives.
    Wheel contents must not include drafts, cover-generation files, screenshots,
    tests, caches, virtual environments or browser binaries. Bundled vendor
@@ -27,13 +28,18 @@
    publication before the publishing job succeeds.
 3. If PRs are stacked, merge the base PR first, then retarget the dependent PR
    to `main` and rerun checks against the final merged state.
-4. Verify the tag will point to the tested main-branch commit. Obtain explicit
-   approval before pushing `vX.Y.Z`: it triggers real PyPI publication.
+4. Verify the tag will point to the merged main-branch commit whose PR passed
+   lightweight CI. Obtain explicit approval before pushing `vX.Y.Z`: it triggers
+   real PyPI publication.
 
 ## Publish And Verify
 
 - `release.yml` runs the shared tests, verifies tag/version equality, builds and
   checks distributions, then publishes with PyPI Trusted Publishing.
+- The full gate covers Linux Python 3.10-3.14, Windows/macOS Python 3.12,
+  installed-wheel conversion, PDFium pixels, math, Mermaid and UTF-8 stdin.
+  A failure blocks publication. Do not repeat this matrix on ordinary PRs or
+  main pushes; `ci.yml` manual dispatch runs only the lightweight checks.
 - PyPI must trust this repository's `release.yml` workflow and `pypi` environment.
   No PyPI token is needed in GitHub Secrets.
 - After publication, verify the PyPI version, README and downloadable artifacts.
