@@ -127,9 +127,12 @@ def test_code_decoration_stays_with_first_line_while_long_code_paginates(
     target = tmp_path / 'code-page-break.pdf'
     # Test both a nearly full page and enough room to begin a block that could
     # fit on a fresh page. Avoiding breaks in the whole pre wastes the latter.
+    # Fix line geometry so platform monospace metrics cannot make all ten lines
+    # fit in the remaining space and invalidate the pagination fixture.
     result = markdown_to_pdf(
         source, target, strict=True,
         custom_css='@page { size: 400px 300px; margin: 20px; } '
+                   'pre, pre code { font-size: 12px; line-height: 20px; } '
                    f'p {{ height: {lead_height}px; margin: 0; }}',
         include_page_header=False, include_page_footer=False,
     )
