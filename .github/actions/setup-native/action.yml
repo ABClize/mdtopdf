@@ -7,6 +7,12 @@ runs:
       if: runner.os == 'Linux'
       shell: bash
       run: |
+        # Prefer Ubuntu's HTTPS archives over the Azure mirror that can trickle
+        # large font downloads without triggering APT's inactivity timeout.
+        mirror_list=/etc/apt/apt-mirrors.txt
+        if [[ -f "$mirror_list" ]] && grep -q '^https://archive\.ubuntu\.com/ubuntu/' "$mirror_list"; then
+          sudo sed -i '\|^http://azure\.archive\.ubuntu\.com/ubuntu/|s/priority:1/priority:4/' "$mirror_list"
+        fi
         # Bound mirror stalls and retry transient failures without hiding errors.
         apt_options=(
           -o Acquire::Retries=2
