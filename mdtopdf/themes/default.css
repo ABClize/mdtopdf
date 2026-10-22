@@ -4,20 +4,20 @@
 }
 
 :root {
-  /* Shared lavender document/diagram palette; custom CSS can override it at :root. */
+  /* Shared document/diagram palette; custom CSS can override it at :root. */
   --mdtopdf-background: #ffffff;
-  --mdtopdf-text: #30283f;
+  --mdtopdf-text: #172033;
   --mdtopdf-heading: #173b5c;
   --mdtopdf-heading-2: #256f8a;
   --mdtopdf-heading-3: #9a3f65;
   --mdtopdf-heading-4: #5f55a4;
   --mdtopdf-heading-5: #24765a;
   --mdtopdf-heading-6: #a15c18;
-  --mdtopdf-accent: #7352a6;
-  --mdtopdf-muted: #78658f;
-  --mdtopdf-surface: #f3effa;
-  --mdtopdf-surface-alt: #e9e1f3;
-  --mdtopdf-border: #b5a2cf;
+  --mdtopdf-accent: #0f6ea7;
+  --mdtopdf-muted: #526579;
+  --mdtopdf-surface: #f5f9fd;
+  --mdtopdf-surface-alt: #eaf1f7;
+  --mdtopdf-border: #9bb2c8;
   --mdtopdf-critical: #a63d40;
   color: var(--mdtopdf-text);
   font-family: "Segoe UI", Arial, "Liberation Sans", "DejaVu Sans", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Noto Sans CJK SC", "Source Han Sans SC", "Source Han Sans CN", sans-serif;

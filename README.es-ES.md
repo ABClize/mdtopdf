@@ -43,7 +43,7 @@ Los agentes son buenos escribiendo Markdown. El problema es la transferencia: lo
 Instale desde PyPI en su entorno de Python:
 
 ```shell
-python -m pip install "agent-markdown-pdf>=0.4.0"
+python -m pip install "agent-markdown-pdf>=0.4.1"
 ```
 
 La distribución en PyPI es `agent-markdown-pdf`; instala el comando `mdtopdf`. No utilice `mdtopdf` como nombre del paquete en PyPI; el nombre de la distribución es intencionalmente distinto al del comando.
@@ -150,7 +150,7 @@ mdtopdf convert report.md -o report.pdf --overwrite --json
 
 ## Salida visual
 
-La galería a continuación se renderiza desde el PDF final producido por `examples/visual-test-en.md`. Muestra las páginas reales que un agente puede entregar a un usuario: encabezados, callouts, tablas, código, matemáticas, imágenes, Mermaid y paginación. Las imágenes muestran el renderizador de la versión 0.4.0, con diagramas Pele y PDF renderizado por Chromium.
+La galería a continuación se renderiza desde el PDF final producido por `examples/visual-test-en.md`. Muestra las páginas reales que un agente puede entregar a un usuario: encabezados, callouts, tablas, código, matemáticas, imágenes, Mermaid y paginación. Las imágenes muestran el tema azul claro restaurado en la versión 0.4.1, con diagramas Pele y PDF renderizado por Chromium.
 
 | Página 1 | Página 2 |
 | --- | --- |
@@ -182,19 +182,20 @@ flowchart LR
 ````
 
 Pele genera SVG para la vista previa HTML y el PDF. Las fórmulas `$$...$$` en
-etiquetas usan KaTeX incluido. El tema SVG comparte la paleta lavanda suave del
-documento, con nodos violeta pálido, texto oscuro y conectores violeta grisáceo,
-y prioriza las fuentes latinas antes de CJK.
+etiquetas usan KaTeX incluido. El tema SVG comparte la paleta azul claro del
+documento, con nodos azul pálido, texto oscuro y conectores azul grisáceo,
+y prioriza las fuentes latinas antes de CJK. La versión 0.4.1 restaura esta
+paleta tras el tema lavanda de 0.4.0.
 
 Personalice la paleta del documento y de los diagramas con un archivo `--css`:
 
 ```css
 :root {
-  --mdtopdf-accent: #7352a6;
-  --mdtopdf-surface: #f3effa;
+  --mdtopdf-accent: #0f6ea7;
+  --mdtopdf-surface: #f5f9fd;
 }
 .mermaid-diagram {
-  --pele-border: #b5a2cf;
+  --pele-border: #9bb2c8;
 }
 ```
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.1 - 2026-10-23
+
+### Changed
+
+- Restore the light-blue document and diagram palette while retaining adaptive
+  tables and the existing rendering and pagination fixes.
+- Refresh the English/Chinese PDF galleries and cover for the restored palette.
+- Run lightweight checks on PRs, skip duplicate main-push CI, and reserve the
+  complete cross-platform rendering matrix for release tags.
+
+### Upgrade Notes
+
+- Upgrade with `python -m pip install --upgrade "agent-markdown-pdf>=0.4.1"`.
+  The default colors change from lavender to light blue; custom CSS palette
+  overrides remain supported. CLI/API behavior and runtime requirements are unchanged.
+
 ## 0.4.0 - 2026-10-23
 
 ### Changed

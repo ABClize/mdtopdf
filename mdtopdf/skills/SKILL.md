@@ -10,7 +10,7 @@ Install package `agent-markdown-pdf`; the command and Python import are `mdtopdf
 ## Setup
 
 ```shell
-python -m pip install "agent-markdown-pdf>=0.4.0"
+python -m pip install "agent-markdown-pdf>=0.4.1"
 mdtopdf doctor --render-check --json
 ```
 

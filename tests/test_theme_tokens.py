@@ -109,19 +109,19 @@ def test_document_and_svg_share_default_or_custom_palette(theme_page, custom):
          "rgb(95, 85, 164)", "rgb(36, 118, 90)", "rgb(161, 92, 24)"]
     )
     assert colors["body"] == colors["diagramText"] == colors["diagramMath"] == (
-        "rgb(225, 226, 227)" if custom else "rgb(48, 40, 63)"
+        "rgb(225, 226, 227)" if custom else "rgb(23, 32, 51)"
     )
     assert colors["background"] == ("rgb(24, 32, 48)" if custom else "rgb(255, 255, 255)")
     assert colors["headings"] == headings
     assert colors["tableHeader"] == headings[0]
     assert colors["series"] == headings[1:] + headings[:1]
     assert colors["link"] == colors["calloutAccent"] == (
-        "rgb(144, 176, 208)" if custom else "rgb(115, 82, 166)"
+        "rgb(144, 176, 208)" if custom else "rgb(15, 110, 167)"
     )
     assert colors["calloutSurface"] == colors["diagramSurface"] == (
-        "rgb(40, 48, 64)" if custom else "rgb(243, 239, 250)"
+        "rgb(40, 48, 64)" if custom else "rgb(245, 249, 253)"
     )
-    assert colors["diagramBorder"] == ("rgb(112, 128, 144)" if custom else "rgb(181, 162, 207)")
+    assert colors["diagramBorder"] == ("rgb(112, 128, 144)" if custom else "rgb(155, 178, 200)")
 
     # Preview paper and printed paper use the same configurable background.
     theme_page.emulate_media(media="screen")
