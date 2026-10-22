@@ -84,7 +84,7 @@ def _colors(page, html):
 
 
 @pytest.mark.parametrize("custom", [False, True], ids=["default", "custom-root-palette"])
-def test_document_and_svg_share_palette_without_changing_default_colors(theme_page, custom):
+def test_document_and_svg_share_default_or_custom_palette(theme_page, custom):
     css = """:root {
         --mdtopdf-background: #182030;
         --mdtopdf-text: #e1e2e3;
@@ -109,19 +109,19 @@ def test_document_and_svg_share_palette_without_changing_default_colors(theme_pa
          "rgb(95, 85, 164)", "rgb(36, 118, 90)", "rgb(161, 92, 24)"]
     )
     assert colors["body"] == colors["diagramText"] == colors["diagramMath"] == (
-        "rgb(225, 226, 227)" if custom else "rgb(23, 32, 51)"
+        "rgb(225, 226, 227)" if custom else "rgb(48, 40, 63)"
     )
     assert colors["background"] == ("rgb(24, 32, 48)" if custom else "rgb(255, 255, 255)")
     assert colors["headings"] == headings
     assert colors["tableHeader"] == headings[0]
     assert colors["series"] == headings[1:] + headings[:1]
     assert colors["link"] == colors["calloutAccent"] == (
-        "rgb(144, 176, 208)" if custom else "rgb(15, 110, 167)"
+        "rgb(144, 176, 208)" if custom else "rgb(115, 82, 166)"
     )
     assert colors["calloutSurface"] == colors["diagramSurface"] == (
-        "rgb(40, 48, 64)" if custom else "rgb(245, 249, 253)"
+        "rgb(40, 48, 64)" if custom else "rgb(243, 239, 250)"
     )
-    assert colors["diagramBorder"] == ("rgb(112, 128, 144)" if custom else "rgb(155, 178, 200)")
+    assert colors["diagramBorder"] == ("rgb(112, 128, 144)" if custom else "rgb(181, 162, 207)")
 
     # Preview paper and printed paper use the same configurable background.
     theme_page.emulate_media(media="screen")

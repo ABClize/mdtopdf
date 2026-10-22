@@ -42,6 +42,11 @@ The default theme shares its `--mdtopdf-*` palette between document styles and
 Pele's `--pele-*` variables. Diagram-specific overrides remain available; resolved
 Pele values are embedded into exported SVGs so standalone diagrams keep them.
 
+Tables use Chromium's automatic column layout with wrapping and a bounded
+intrinsic cell width, so long descriptions receive space without crushing short
+labels. Custom CSS can restore equal-width columns with `table-layout: fixed`.
+Math arrays retain their own sizing rules.
+
 The synchronous API works inside an existing asyncio loop by running its
 private event loop in a worker thread. Each conversion closes its browser in
 a finally block and has a bounded timeout. There is no persistent daemon or

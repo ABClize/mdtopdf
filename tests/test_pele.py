@@ -190,7 +190,7 @@ def test_public_svg_api_uses_the_document_theme_and_preserves_lr_direction():
     svg = render_mermaid_to_svg("graph LR\n A[First] --> B[Second] --> C[Third]")
     assert find_mermaid_backend().name == "pele.global.js"
     computed = _inspect_static_svg(svg)
-    assert computed["color"] == "rgb(23, 32, 51)"
+    assert computed["color"] == "rgb(48, 40, 63)"
     assert computed["width"] > computed["height"] > 0
     # The Latin-first stack also applies to diagram digits in mixed CJK labels.
     assert computed["font"].index("Arial") < computed["font"].index("Noto Sans CJK SC")

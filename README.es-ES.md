@@ -154,7 +154,7 @@ mdtopdf convert report.md -o report.pdf --overwrite --json
 
 ## Salida visual
 
-La galería a continuación se renderiza desde el PDF final producido por `examples/visual-test-en.md`. Muestra las páginas reales que un agente puede entregar a un usuario: encabezados, callouts, tablas, código, matemáticas, imágenes, Mermaid y paginación. Estas imágenes son anteriores a la migración a Pele.
+La galería a continuación se renderiza desde el PDF final producido por `examples/visual-test-en.md`. Muestra las páginas reales que un agente puede entregar a un usuario: encabezados, callouts, tablas, código, matemáticas, imágenes, Mermaid y paginación. Las imágenes se generaron con la versión de desarrollo actual, con diagramas Pele y PDF renderizado por Chromium.
 
 | Página 1 | Página 2 |
 | --- | --- |
@@ -186,18 +186,19 @@ flowchart LR
 ````
 
 Pele genera SVG para la vista previa HTML y el PDF. Las fórmulas `$$...$$` en
-etiquetas usan KaTeX incluido. El tema SVG comparte la paleta azul grisácea del
-documento y prioriza las fuentes latinas antes de CJK.
+etiquetas usan KaTeX incluido. El tema SVG comparte la paleta lavanda suave del
+documento, con nodos violeta pálido, texto oscuro y conectores violeta grisáceo,
+y prioriza las fuentes latinas antes de CJK.
 
 Personalice la paleta del documento y de los diagramas con un archivo `--css`:
 
 ```css
 :root {
-  --mdtopdf-accent: #0f6ea7;
-  --mdtopdf-surface: #f2f6fa;
+  --mdtopdf-accent: #7352a6;
+  --mdtopdf-surface: #f3effa;
 }
 .mermaid-diagram {
-  --pele-border: #7f9ab8;
+  --pele-border: #b5a2cf;
 }
 ```
 
@@ -364,7 +365,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 `mdtopdf` admite:
 
 - CommonMark
-- Tablas
+- Tablas con anchos de columna adaptados al contenido y ajuste de palabras largas y URL (sin publicar)
 - Tachado
 - Listas de tareas
 - Notas al pie

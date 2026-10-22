@@ -691,7 +691,7 @@ def test_theme_loading():
     assert "blockquote.callout {" in css
     assert ".callout-warning" in css
     assert "border: 1px solid #d7e0ea;" in css
-    assert "table-layout: fixed;" in css
+    assert "table-layout: auto;" in table_block
     assert "border: 1px solid #cfdae8;" in table_block
     assert "border-radius: 8px;" in table_block
     assert "overflow: hidden;" in table_block

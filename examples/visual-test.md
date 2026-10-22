@@ -215,7 +215,7 @@ $$
 
 ## 10. Mermaid
 
-下面的 Mermaid 由内置资源在 Chromium 中渲染成 SVG，无需另装 Mermaid CLI。
+下面的 Mermaid 代码块由内置 Pele 在 Chromium 中渲染成 SVG，无需另装 Mermaid CLI。
 
 ```mermaid
 flowchart LR

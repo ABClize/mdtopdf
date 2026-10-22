@@ -179,7 +179,8 @@ bundled renderer makes the basic doctor check fail.
 The gallery below is rendered from the final PDF produced by
 `examples/visual-test-en.md`. It shows the actual pages an agent can hand back
 to a user: headings, callouts, tables, code, math, images, Mermaid, and
-pagination. These gallery images predate the Pele migration.
+pagination. The images use the current development version, with Pele diagrams
+and Chromium PDF rendering.
 
 | Page 1 | Page 2 |
 | --- | --- |
@@ -213,17 +214,18 @@ flowchart LR
 
 Pele produces SVG for HTML preview and PDF. Diagram label formulas written as
 `$$...$$` use the bundled KaTeX renderer. The default SVG theme matches the
-document's blue-gray palette and Latin-first font stack.
+document's soft lavender palette and Latin-first font stack, with pale purple
+nodes, dark text, and gray-purple connectors.
 
 To customize the document and diagram palette, pass a CSS file with `--css`:
 
 ```css
 :root {
-  --mdtopdf-accent: #0f6ea7;
-  --mdtopdf-surface: #f2f6fa;
+  --mdtopdf-accent: #7352a6;
+  --mdtopdf-surface: #f3effa;
 }
 .mermaid-diagram {
-  --pele-border: #7f9ab8;
+  --pele-border: #b5a2cf;
 }
 ```
 
@@ -404,7 +406,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 `mdtopdf` supports:
 
 - CommonMark
-- Tables
+- Tables with content-based column widths and wrapping for long words and URLs (unreleased)
 - Strikethrough
 - Task lists
 - Footnotes
