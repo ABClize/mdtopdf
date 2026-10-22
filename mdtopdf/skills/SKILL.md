@@ -10,7 +10,7 @@ Install package `agent-markdown-pdf`; the command and Python import are `mdtopdf
 ## Setup
 
 ```shell
-python -m pip install "agent-markdown-pdf>=0.3.0"
+python -m pip install "agent-markdown-pdf>=0.4.0"
 mdtopdf doctor --render-check --json
 ```
 
@@ -28,7 +28,7 @@ code. Follow the README for emoji and platform details. Do not download
 Microsoft fonts. Pele (for Mermaid syntax) and KaTeX are bundled; no separate mmdc, npm, or
 WeasyPrint installation is needed.
 
-This checkout's Pele migration is unreleased; PyPI 0.3.0 still uses Mermaid.js.
+Version 0.4.0 uses Pele instead of Mermaid.js.
 Keep `mermaid` / `mmd` fences. Use shared `--mdtopdf-*` palette variables at
 `:root` through `--css` to coordinate document and diagram colors, or local
 `--pele-*` overrides for diagrams. Mermaid `theme` / `themeVariables` do not apply.
@@ -71,7 +71,7 @@ For layout debugging, run `mdtopdf html INPUT.md -o preview.html --json`.
 Math and Mermaid are already rendered in the exported HTML; plain HTML export
 does not verify image loading. Inspect the final PDF for pagination and glyphs.
 
-In the unreleased Pele pipeline, diagrams use the configured `@page` geometry;
+In the Pele pipeline, diagrams use the configured `@page` geometry;
 matching first/left/right styles use the smallest available area before
 pagination. On `diagram_text_too_small`, review the PDF and consider wider paper,
 larger labels, or splitting the diagram. The default threshold is 8pt;

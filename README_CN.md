@@ -39,14 +39,10 @@ Agent 很擅长写 Markdown，但是它用各种方式导出的pdf样式无法�
 
 ## 快速上手
 
-**开发版本说明：**下文的 Pele 图表渲染属于尚未发布的源码变更，当前 PyPI
-版本 0.3.0 仍使用 Mermaid.js。发布前可在此源码目录运行
-`python -m pip install -e ".[dev]"` 体验 Pele。
-
 在所用的 Python 环境中，从 PyPI 安装：
 
 ```powershell
-python -m pip install "agent-markdown-pdf>=0.3.0"
+python -m pip install "agent-markdown-pdf>=0.4.0"
 ```
 
 PyPI 发行包叫 `agent-markdown-pdf`，安装后提供的命令仍然是 `mdtopdf`。
@@ -165,7 +161,7 @@ mdtopdf doctor --render-check --json
 ## 输出效果
 
 下面 6 张图来自 `examples/visual-test-cn.md`，能看到标题、Callout、表格、代码、
-公式、图片、Mermaid 和分页的实际效果。截图使用当前开发版生成，图表由 Pele
+公式、图片、Mermaid 和分页的实际效果。截图展示 0.4.0 的渲染效果，图表由 Pele
 渲染，PDF 由 Chromium 输出。
 
 | 第 1 页 | 第 2 页 |
@@ -186,7 +182,7 @@ Markdown -> markdown-it-py HTML -> theme/custom CSS -> Chromium PDF
 等待字体和图片加载后打印 PDF。不再需要单独安装 Mermaid CLI、Node.js、WeasyPrint 或 MSYS2。
 浏览器在准备环境时安装，转换过程不会自动下载。
 
-### 使用 Pele 渲染 Mermaid 图表（未发布）
+### 使用 Pele 渲染 Mermaid 图表
 
 继续使用 `mermaid` 或 `mmd` 代码块：
 
@@ -374,7 +370,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 `mdtopdf` 支持：
 
 - CommonMark
-- 表格按内容自适应列宽，长单词、编号和 URL 自动换行（未发布）
+- 表格按内容自适应列宽，长单词、编号和 URL 自动换行
 - 删除线
 - 任务列表
 - 脚注
@@ -387,7 +383,7 @@ markdown_file_to_pdf("report.md", output_path="report.pdf", overwrite=True)
 - Obsidian 风格 callout，例如 `> [!note] Title`
 - 常见安全 HTML 标签，例如 `<br>`、`<kbd>`、`<mark>`、`<sup>`、`<sub>`
 - `$inline$`、`$$block$$` 和常见 `amsmath` 环境
-- 使用内置 Pele 在 Chromium 中渲染 Mermaid 代码块（未发布）
+- 使用内置 Pele 在 Chromium 中渲染 Mermaid 代码块
 
 默认情况下，`mdtopdf` 不会直接渲染任意原始 HTML；如果 Markdown 来源可信，可以显式加上 `--unsafe-html`。
 
